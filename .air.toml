@@ -1,0 +1,8 @@
+# Air configuration
+root = "."
+tmp_dir = "/app/tmp"
+
+[build]
+cmd = "go build -o tmp/main ./cmd/"
+bin = "tmp/main"
+include_ext = ["go"]

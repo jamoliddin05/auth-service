@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./cmd:/app/cmd
+      - ./internal:/app/internal
+      - ./bootstrap:/app/bootstrap
+      - ./migrations:/app/migrations
+      - ./go.mod:/app/go.mod
+      - ./go.sum:/app/go.sum
+    command: ["air"]
+    env_file:
+      - .env
