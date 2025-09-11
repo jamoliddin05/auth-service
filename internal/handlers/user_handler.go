@@ -21,7 +21,7 @@ func NewGinUserHandler(userService *services.UserService) *GinUserHandler {
 
 // BindRoutes registers the routes with Gin
 func (h *GinUserHandler) BindRoutes(r *gin.Engine) {
-	r.POST("/auth/register", h.Register)
+	r.POST("/register", h.Register)
 }
 
 // Register handles the /register route
