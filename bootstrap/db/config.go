@@ -16,12 +16,12 @@ type Config struct {
 
 func LoadConfig() *Config {
 	return &Config{
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "secret"),
-		DBName:     getEnv("DB_NAME", "postgres"),
-		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
+		DBHost:     getEnv("POSTGRES_HOST", "localhost"),
+		DBPort:     getEnv("POSTGRES_PORT", "5432"),
+		DBUser:     getEnv("POSTGRES_USER", "postgres"),
+		DBPassword: getEnv("POSTGRES_PASSWORD", "secret"),
+		DBName:     getEnv("POSTGRES_DB", "postgres"),
+		DBSSLMode:  getEnv("POSTGRES_SSLMODE", "disable"),
 	}
 }
 
