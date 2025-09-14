@@ -10,22 +10,22 @@ import (
 )
 
 // GinUserHandler is the Gin adapter for UserService
-type GinUserHandler struct {
+type GinAuthHandler struct {
 	userService *services.UserService
 }
 
 // NewGinUserHandler creates a new Gin adapter
-func NewGinUserHandler(userService *services.UserService) *GinUserHandler {
+func NewGinAuthHandler(authService *services.AuthService) *GinAuthHandler {
 	return &GinUserHandler{userService: userService}
 }
 
 // BindRoutes registers the routes with Gin
-func (h *GinUserHandler) BindRoutes(r *gin.Engine) {
+func (h *GinAuthHandler) BindRoutes(r *gin.Engine) {
 	r.POST("/register", h.Register)
 }
 
 // Register handles the /register route
-func (h *GinUserHandler) Register(c *gin.Context) {
+func (h *GinAuthHandler) Register(c *gin.Context) {
 	var req dto.UserCreateRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -33,7 +33,7 @@ func (h *GinUserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.userService.CreateUser(req)
+	resp, err := h.authService.Register(req)
 	if err != nil {
 		JSONError(c, err.Error(), http.StatusInternalServerError)
 		return
