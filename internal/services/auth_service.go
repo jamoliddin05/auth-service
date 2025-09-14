@@ -1,29 +1,24 @@
 package services
 
 import (
-    "app/internal/repositories"
-    "app/internal/uows"
-    "app/internal/utils"
-    "app/internal/domain"
+	"app/internal/dto"
+	"app/internal/mappers"
+	"app/internal/repositories"
+	"app/internal/uows"
+	"app/internal/utils"
 )
 
 type AuthService struct {
-    uow uows.UnitOfWork
-    hasher utils.PasswordHasher
+	uow    uows.UnitOfWork
+	hasher utils.PasswordHasher
 }
 
-func NewAuthService(uow uows.UnitOfWork, hasher PasswordHasher) *AuthService {
-    return &AuthService{uow: uow, hasher: hasher}
+func NewAuthService(uow uows.UnitOfWork, hasher utils.PasswordHasher) *AuthService {
+	return &AuthService{uow: uow, hasher: hasher}
 }
 
-func (s *AuthService) Register(dto RegisterDTO) (*UserResponse, error) {
-	user := &domain.User{
-		Phone:    dto.Phone,
-		Password: s.hasher.Hash(dto.Password),
-		Roles: []domain.UserRole{
-			{Role: domain.RoleCustomer},
-		},
-	}
+func (s *AuthService) Register(req dto.RegisterRequest) (*dto.RegisterResponse, error) {
+	user := mappers.DTOToUser(req)
 
 	err := s.uow.DoRegistration(func(userRepo repositories.UserRepository, eventRepo repositories.EventRepository) error {
 		if err := userRepo.Create(user); err != nil {
@@ -35,9 +30,5 @@ func (s *AuthService) Register(dto RegisterDTO) (*UserResponse, error) {
 		return nil, err
 	}
 
-	return &UserResponse{
-		ID:    user.ID,
-		Phone: user.Phone,
-		Roles: user.Roles,
-	}, nil
+	return mappers.UserToDTO(user), nil
 }

@@ -3,6 +3,7 @@ package repositories
 import (
 	"app/internal/domain"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type UserRepository interface {

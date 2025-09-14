@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Repository interface
+// EventRepository interface
 type EventRepository interface {
 	Save(eventType string, payload interface{}) error
 	GetByID(id int64) (*domain.Event, error)
@@ -14,7 +14,7 @@ type EventRepository interface {
 	MarkProcessedBatch(ids []int64) error
 }
 
-// GORM implementation
+// EventRepositoryImpl implementation
 type EventRepositoryImpl struct {
 	db *gorm.DB
 }

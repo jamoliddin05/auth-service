@@ -9,14 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GinUserHandler is the Gin adapter for UserService
+// GinAuthHandler is the Gin adapter for UserService
 type GinAuthHandler struct {
-	userService *services.UserService
+	authService *services.AuthService
 }
 
-// NewGinUserHandler creates a new Gin adapter
+// NewGinAuthHandler creates a new Gin adapter
 func NewGinAuthHandler(authService *services.AuthService) *GinAuthHandler {
-	return &GinUserHandler{userService: userService}
+	return &GinAuthHandler{authService: authService}
 }
 
 // BindRoutes registers the routes with Gin
@@ -26,7 +26,7 @@ func (h *GinAuthHandler) BindRoutes(r *gin.Engine) {
 
 // Register handles the /register route
 func (h *GinAuthHandler) Register(c *gin.Context) {
-	var req dto.UserCreateRequest
+	var req dto.RegisterRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		JSONError(c, err.Error(), http.StatusBadRequest)

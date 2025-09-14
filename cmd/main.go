@@ -4,8 +4,9 @@ import (
 	"app/bootstrap"
 	"app/bootstrap/db"
 	"app/internal/handlers"
-	"app/internal/repositories"
 	"app/internal/services"
+	"app/internal/uows"
+	"app/internal/utils"
 	"app/internal/validators"
 	"context"
 	"errors"
@@ -39,9 +40,10 @@ func main() {
 	}
 
 	// ---- 2. Build layers (repo → service → handler) ----
-	userRepo := repositories.NewUserRepository(dbWrapper.DB())
-	userSvc := services.NewUserService(userRepo)
-	userHandler := handlers.NewGinUserHandler(userSvc)
+	uow := uows.NewUnitOfWork(dbWrapper.DB())
+	hasher := utils.NewBcryptHasher()
+	authSvc := services.NewAuthService(uow, hasher)
+	userHandler := handlers.NewGinAuthHandler(authSvc)
 
 	// ---- 3. Setup Gin router ----
 	r := gin.Default()
