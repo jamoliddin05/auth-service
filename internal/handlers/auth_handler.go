@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"app/internal/dto"
@@ -35,7 +36,12 @@ func (h *GinAuthHandler) Register(c *gin.Context) {
 
 	resp, err := h.authService.Register(req)
 	if err != nil {
-		JSONError(c, err.Error(), http.StatusInternalServerError)
+		switch {
+		case errors.Is(err, services.ErrUserAlreadyExists):
+			JSONError(c, err.Error(), http.StatusConflict)
+		default:
+			JSONError(c, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 

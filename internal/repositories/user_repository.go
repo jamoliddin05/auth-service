@@ -9,6 +9,7 @@ import (
 type UserRepository interface {
 	Create(u *domain.User) error
 	GetByID(id uuid.UUID) (*domain.User, error)
+	GetByPhone(phone string) (*domain.User, error)
 }
 
 type UserRepositoryImpl struct {
@@ -26,6 +27,14 @@ func (r *UserRepositoryImpl) Create(u *domain.User) error {
 func (r *UserRepositoryImpl) GetByID(id uuid.UUID) (*domain.User, error) {
 	var user domain.User
 	if err := r.db.Preload("Roles").First(&user, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *UserRepositoryImpl) GetByPhone(phone string) (*domain.User, error) {
+	var user domain.User
+	if err := r.db.Preload("Roles").First(&user, "phone = ?", phone).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil

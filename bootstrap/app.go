@@ -3,7 +3,12 @@ package bootstrap
 import (
 	"app/bootstrap/closers"
 	"context"
+	"errors"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -12,7 +17,6 @@ type App struct {
 	closers []closers.Closer
 }
 
-// NewApp builds an App with any http.Handler (Gin, Chi, net/http mux, etc.)
 func NewApp(handler http.Handler, addr string) *App {
 	return &App{
 		srv: &http.Server{
@@ -25,24 +29,39 @@ func NewApp(handler http.Handler, addr string) *App {
 	}
 }
 
-// RegisterCloser adds resources (DBs, caches, brokers) to close on shutdown.
 func (a *App) RegisterCloser(c closers.Closer) {
 	a.closers = append(a.closers, c)
 }
 
-// Run starts the HTTP server (blocking).
 func (a *App) Run() error {
 	return a.srv.ListenAndServe()
 }
 
-// Shutdown gracefully stops the HTTP server and closes all resources.
-func (a *App) Shutdown(ctx context.Context) error {
-	// close resources first
+// RunWithGracefulShutdown runs server and gracefully shuts down on SIGINT/SIGTERM
+func (a *App) RunWithGracefulShutdown() {
+	go func() {
+		if err := a.Run(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("server error: %v", err)
+		}
+	}()
+	log.Println("server running on", a.srv.Addr)
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("shutdown signal received")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
 	for _, c := range a.closers {
 		if err := c.Close(ctx); err != nil {
-			return err
+			log.Printf("failed to close resource: %v", err)
 		}
 	}
-	// then gracefully stop the HTTP server
-	return a.srv.Shutdown(ctx)
+
+	if err := a.srv.Shutdown(ctx); err != nil {
+		log.Fatalf("failed to shutdown gracefully: %v", err)
+	}
+	log.Println("server exited cleanly")
 }
