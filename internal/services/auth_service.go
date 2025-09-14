@@ -1,6 +1,7 @@
 package services
 
 import (
+	"app/internal/domain"
 	"app/internal/dto"
 	"app/internal/mappers"
 	"app/internal/repositories"
@@ -19,6 +20,9 @@ func NewAuthService(uow uows.UnitOfWork, hasher utils.PasswordHasher) *AuthServi
 
 func (s *AuthService) Register(req dto.RegisterRequest) (*dto.RegisterResponse, error) {
 	user := mappers.DTOToUser(req)
+	user.Roles = []domain.UserRole{
+		{Role: domain.RoleCustomer},
+	}
 
 	err := s.uow.DoRegistration(func(userRepo repositories.UserRepository, eventRepo repositories.EventRepository) error {
 		if err := userRepo.Create(user); err != nil {
