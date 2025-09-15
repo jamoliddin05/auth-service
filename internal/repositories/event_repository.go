@@ -7,6 +7,8 @@ import (
 )
 
 // EventRepository interface
+//
+//go:generate mockery --name=EventRepository --output=../mocks --structname=EventRepositoryMock
 type EventRepository interface {
 	Save(eventType string, payload interface{}) error
 	GetByID(id int64) (*domain.Event, error)

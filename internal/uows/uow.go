@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
+//go:generate mockery --name=UnitOfWork --output=../mocks --structname=UnitOfWorkMock
 type UnitOfWork interface {
 	Store() stores.Store
 	DoRegistration(fn func(userRepo repositories.UserRepository, eventRepo repositories.EventRepository) error) error
