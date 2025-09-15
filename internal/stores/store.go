@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm"
 )
 
+//go:generate mockery --name=Store --output=../mocks --structname=StoreMock
 type Store interface {
 	Users() repositories.UserRepository
 	Outbox() repositories.EventRepository

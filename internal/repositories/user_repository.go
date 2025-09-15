@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
+//go:generate mockery --name=UserRepository --output=../mocks --structname=UserRepositoryMock
 type UserRepository interface {
 	Create(u *domain.User) error
 	GetByID(id uuid.UUID) (*domain.User, error)
