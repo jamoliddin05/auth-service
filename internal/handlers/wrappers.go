@@ -23,9 +23,16 @@ func JSONSuccess[T any](c *gin.Context, data T, status int) {
 }
 
 // JSONError writes an error JSON response
-func JSONError(c *gin.Context, message string, status int) {
-	c.JSON(status, ErrorResponse{
-		Success: false,
-		Message: message,
-	})
+func JSONError(c *gin.Context, message string, status int, errors map[string]string) {
+	resp := gin.H{
+		"success": false,
+		"message": message,
+	}
+
+	if errors != nil && len(errors) > 0 {
+		resp["errors"] = errors
+	}
+
+	c.JSON(status, resp)
 }
+

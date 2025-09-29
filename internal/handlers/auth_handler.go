@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
+	"github.com/go-playground/validator/v10"
 	"net/http"
+	"strings"
 
 	"app/internal/dto"
 	"app/internal/services"
@@ -30,7 +33,17 @@ func (h *GinAuthHandler) Register(c *gin.Context) {
 	var req dto.RegisterRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		JSONError(c, err.Error(), http.StatusBadRequest)
+		var ve validator.ValidationErrors
+		if errors.As(err, &ve) {
+			errorsMap := make(map[string]string)
+			for _, fe := range ve {
+				errorsMap[strings.ToLower(fe.Field())] = msgForTag(fe)
+			}
+			JSONError(c, "Validation failed", http.StatusBadRequest, errorsMap)
+			return
+		}
+
+		JSONError(c, err.Error(), http.StatusBadRequest, nil)
 		return
 	}
 
@@ -38,12 +51,25 @@ func (h *GinAuthHandler) Register(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrUserAlreadyExists):
-			JSONError(c, err.Error(), http.StatusConflict)
+			JSONError(c, err.Error(), http.StatusConflict, nil)
 		default:
-			JSONError(c, err.Error(), http.StatusInternalServerError)
+			JSONError(c, err.Error(), http.StatusInternalServerError, nil)
 		}
 		return
 	}
 
 	JSONSuccess(c, resp, http.StatusCreated)
+}
+
+func msgForTag(fe validator.FieldError) string {
+	switch fe.Tag() {
+	case "required":
+		return fmt.Sprintf("%s is required", fe.Field())
+	case "min":
+		return fmt.Sprintf("%s must be at least %s characters", fe.Field(), fe.Param())
+	case "uzphone":
+		return "Phone number must be a valid Uzbekistan phone number"
+	default:
+		return fmt.Sprintf("%s is not valid", fe.Field())
+	}
 }
