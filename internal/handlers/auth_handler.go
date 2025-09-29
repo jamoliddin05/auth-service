@@ -26,6 +26,7 @@ func NewGinAuthHandler(authService *services.AuthService) *GinAuthHandler {
 // BindRoutes registers the routes with Gin
 func (h *GinAuthHandler) BindRoutes(r *gin.Engine) {
 	r.POST("/register", h.Register)
+	r.POST("/login", h.Login)
 }
 
 // Register handles the /register route
@@ -59,6 +60,39 @@ func (h *GinAuthHandler) Register(c *gin.Context) {
 	}
 
 	JSONSuccess(c, resp, http.StatusCreated)
+}
+
+// Login handles the /login route
+func (h *GinAuthHandler) Login(c *gin.Context) {
+	var req dto.LoginRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		var ve validator.ValidationErrors
+		if errors.As(err, &ve) {
+			errorsMap := make(map[string]string)
+			for _, fe := range ve {
+				errorsMap[strings.ToLower(fe.Field())] = msgForTag(fe)
+			}
+			JSONError(c, "Validation failed", http.StatusBadRequest, errorsMap)
+			return
+		}
+
+		JSONError(c, err.Error(), http.StatusBadRequest, nil)
+		return
+	}
+
+	resp, err := h.authService.Login(req)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrInvalidCredentials):
+			JSONError(c, err.Error(), http.StatusUnauthorized, nil)
+		default:
+			JSONError(c, err.Error(), http.StatusInternalServerError, nil)
+		}
+		return
+	}
+
+	JSONSuccess(c, resp, http.StatusOK)
 }
 
 func msgForTag(fe validator.FieldError) string {

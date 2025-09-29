@@ -13,7 +13,7 @@ func main() {
 	dbWrapper := helpers.MustInitDB(cfg)
 	helpers.MustRegisterValidators()
 
-	authHandler := helpers.BuildAuthHandler(dbWrapper)
+	authHandler := helpers.BuildAuthHandler(dbWrapper, cfg.JWTPrivateKey)
 
 	r := gin.Default()
 	authHandler.BindRoutes(r)
@@ -21,6 +21,5 @@ func main() {
 	app := bootstrap.NewApp(r, ":8080")
 	app.RegisterCloser(dbWrapper)
 
-	// запуск с graceful shutdown
 	app.RunWithGracefulShutdown()
 }

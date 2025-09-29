@@ -33,6 +33,26 @@ func (_m *StoreMock) Outbox() repositories.EventRepository {
 	return r0
 }
 
+// Tokens provides a mock function with no fields
+func (_m *StoreMock) Tokens() repositories.TokenRepository {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Tokens")
+	}
+
+	var r0 repositories.TokenRepository
+	if rf, ok := ret.Get(0).(func() repositories.TokenRepository); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(repositories.TokenRepository)
+		}
+	}
+
+	return r0
+}
+
 // Users provides a mock function with no fields
 func (_m *StoreMock) Users() repositories.UserRepository {
 	ret := _m.Called()

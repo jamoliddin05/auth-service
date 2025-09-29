@@ -10,7 +10,7 @@ import (
 type UnitOfWork interface {
 	Store() stores.Store
 	DoRegistration(fn func(userRepo repositories.UserRepository, eventRepo repositories.EventRepository) error) error
-	// DoLogin(fn func(tokenRepo TokenRepository, eventRepo EventRepository) error) error
+	DoLogin(fn func(tokenRepo repositories.TokenRepository, eventRepo repositories.EventRepository) error) error
 }
 
 type gormUnitOfWork struct {
@@ -35,5 +35,13 @@ func (u *gormUnitOfWork) DoRegistration(fn func(repositories.UserRepository, rep
 	return u.db.Transaction(func(tx *gorm.DB) error {
 		txStore := stores.NewStore(tx)
 		return fn(txStore.Users(), txStore.Outbox())
+	})
+}
+
+// DoLogin with tx
+func (u *gormUnitOfWork) DoLogin(fn func(tokenRepo repositories.TokenRepository, eventRepo repositories.EventRepository) error) error {
+	return u.db.Transaction(func(tx *gorm.DB) error {
+		txStore := stores.NewStore(tx)
+		return fn(txStore.Tokens(), txStore.Outbox())
 	})
 }
