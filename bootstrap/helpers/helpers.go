@@ -33,10 +33,13 @@ func MustRegisterValidators() {
 }
 
 // BuildAuthHandler строит слой AuthService + Gin handler
-func BuildAuthHandler(dbWrapper *db.Wrapper) *handlers.GinAuthHandler {
+func BuildAuthHandler(dbWrapper *db.Wrapper, jwtKey string) *handlers.GinAuthHandler {
 	uow := uows.NewUnitOfWork(dbWrapper.DB())
 	hasher := utils.NewBcryptHasher()
-	jwtHelper := utils.NewJWTManager("keys/private.pem", 15*time.Minute)
+	jwtHelper, err := utils.NewJWTManager(jwtKey, 15*time.Minute)
+	if err != nil {
+		log.Fatalf("could not initialize JWT manager: %v", err)
+	}
 	authSvc := services.NewAuthService(uow, hasher, jwtHelper)
 	authHandler := handlers.NewGinAuthHandler(authSvc)
 	return authHandler

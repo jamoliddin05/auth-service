@@ -6,22 +6,24 @@ import (
 )
 
 type Config struct {
-	DBHost     string
-	DBPort     string
-	DBUser     string
-	DBPassword string
-	DBName     string
-	DBSSLMode  string
+	DBHost        string
+	DBPort        string
+	DBUser        string
+	DBPassword    string
+	DBName        string
+	DBSSLMode     string
+	JWTPrivateKey string
 }
 
 func LoadConfig() *Config {
 	return &Config{
-		DBHost:     getEnv("POSTGRES_HOST", "localhost"),
-		DBPort:     getEnv("POSTGRES_PORT", "5432"),
-		DBUser:     getEnv("POSTGRES_USER", "postgres"),
-		DBPassword: getEnv("POSTGRES_PASSWORD", "secret"),
-		DBName:     getEnv("POSTGRES_DB", "postgres"),
-		DBSSLMode:  getEnv("POSTGRES_SSLMODE", "disable"),
+		DBHost:        getEnv("POSTGRES_HOST", "localhost"),
+		DBPort:        getEnv("POSTGRES_PORT", "5432"),
+		DBUser:        getEnv("POSTGRES_USER", "postgres"),
+		DBPassword:    getEnv("POSTGRES_PASSWORD", "secret"),
+		DBName:        getEnv("POSTGRES_DB", "postgres"),
+		DBSSLMode:     getEnv("POSTGRES_SSLMODE", "disable"),
+		JWTPrivateKey: getEnv("JWT_PRIVATE_KEY", "secret"),
 	}
 }
 

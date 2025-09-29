@@ -8,6 +8,7 @@ import (
 	"app/internal/uows"
 	"app/internal/utils"
 	"errors"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -36,7 +37,7 @@ func NewAuthService(
 
 func (s *AuthService) Register(req dto.RegisterRequest) (*dto.RegisterResponse, error) {
 	existingUser, err := s.uow.Store().Users().GetByPhone(req.Phone)
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 	if existingUser != nil {
@@ -69,11 +70,12 @@ func (s *AuthService) Register(req dto.RegisterRequest) (*dto.RegisterResponse, 
 func (s *AuthService) Login(req dto.LoginRequest) (*dto.LoginResponse, error) {
 	existingUser, err := s.uow.Store().Users().GetByPhone(req.Phone)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrInvalidCredentials
+		}
 		return nil, err
 	}
-	if existingUser == nil {
-		return nil, ErrInvalidCredentials
-	}
+
 	if !s.hasher.Verify(req.Password, existingUser.Password) {
 		return nil, ErrInvalidCredentials
 	}

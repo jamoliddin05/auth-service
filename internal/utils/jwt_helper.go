@@ -2,10 +2,10 @@ package utils
 
 import (
 	"crypto/rsa"
-	"os"
-	"time"
-
+	"fmt"
 	"github.com/golang-jwt/jwt/v5"
+	"strings"
+	"time"
 )
 
 //go:generate mockery --name=JWTHelper --output=../mocks --structname=JWTHelperMock
@@ -18,15 +18,24 @@ type JWTManager struct {
 	tokenDuration time.Duration
 }
 
-// NewJWTManager loads an RSA private key from file
-func NewJWTManager(privateKeyPath string, duration time.Duration) *JWTManager {
-	privBytes, _ := os.ReadFile(privateKeyPath)
-	privateKey, _ := jwt.ParseRSAPrivateKeyFromPEM(privBytes)
+// NewJWTManager parses an RSA private key from a PEM string
+func NewJWTManager(pemKey string, duration time.Duration) (*JWTManager, error) {
+	if pemKey == "" {
+		return nil, fmt.Errorf("private key PEM string is empty")
+	}
+
+	// Replace literal \n with actual newlines
+	pemKey = strings.ReplaceAll(pemKey, `\n`, "\n")
+
+	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(pemKey))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
 
 	return &JWTManager{
 		privateKey:    privateKey,
 		tokenDuration: duration,
-	}
+	}, nil
 }
 
 // Claims structure

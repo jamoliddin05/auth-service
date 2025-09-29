@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm"
 )
 
+//go:generate mockery --name=TokenRepository --output=../mocks --structname=TokenRepositoryMock
 type TokenRepository interface {
 	Save(token *domain.Token) error
 	GetByID(id uint) (*domain.Token, error)

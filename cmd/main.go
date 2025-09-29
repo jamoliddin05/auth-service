@@ -13,7 +13,7 @@ func main() {
 	dbWrapper := helpers.MustInitDB(cfg)
 	helpers.MustRegisterValidators()
 
-	authHandler := helpers.BuildAuthHandler(dbWrapper)
+	authHandler := helpers.BuildAuthHandler(dbWrapper, cfg.JWTPrivateKey)
 
 	r := gin.Default()
 	authHandler.BindRoutes(r)
