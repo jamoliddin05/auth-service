@@ -8,6 +8,7 @@ import (
 	"app/internal/utils"
 	"app/internal/validators"
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
@@ -35,7 +36,8 @@ func MustRegisterValidators() {
 func BuildAuthHandler(dbWrapper *db.Wrapper) *handlers.GinAuthHandler {
 	uow := uows.NewUnitOfWork(dbWrapper.DB())
 	hasher := utils.NewBcryptHasher()
-	authSvc := services.NewAuthService(uow, hasher)
+	jwtHelper := utils.NewJWTManager("keys/private.pem", 15*time.Minute)
+	authSvc := services.NewAuthService(uow, hasher, jwtHelper)
 	authHandler := handlers.NewGinAuthHandler(authSvc)
 	return authHandler
 }

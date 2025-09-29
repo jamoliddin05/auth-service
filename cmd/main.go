@@ -21,6 +21,5 @@ func main() {
 	app := bootstrap.NewApp(r, ":8080")
 	app.RegisterCloser(dbWrapper)
 
-	// запуск с graceful shutdown
 	app.RunWithGracefulShutdown()
 }

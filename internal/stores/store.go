@@ -8,6 +8,7 @@ import (
 //go:generate mockery --name=Store --output=../mocks --structname=StoreMock
 type Store interface {
 	Users() repositories.UserRepository
+	Tokens() repositories.TokenRepository
 	Outbox() repositories.EventRepository
 }
 
@@ -20,6 +21,9 @@ func NewStore(db *gorm.DB) Store {
 }
 
 func (s *gormStore) Users() repositories.UserRepository { return repositories.NewUserRepository(s.db) }
+func (s *gormStore) Tokens() repositories.TokenRepository {
+	return repositories.NewTokenRepository(s.db)
+}
 func (s *gormStore) Outbox() repositories.EventRepository {
 	return repositories.NewEventRepository(s.db)
 }
