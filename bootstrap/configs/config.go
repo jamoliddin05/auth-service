@@ -1,4 +1,4 @@
-package db
+package configs
 
 import (
 	"fmt"
@@ -13,6 +13,7 @@ type Config struct {
 	DBName        string
 	DBSSLMode     string
 	JWTPrivateKey string
+	JWTPublicKey  string
 }
 
 func LoadConfig() *Config {
@@ -24,6 +25,7 @@ func LoadConfig() *Config {
 		DBName:        getEnv("POSTGRES_DB", "postgres"),
 		DBSSLMode:     getEnv("POSTGRES_SSLMODE", "disable"),
 		JWTPrivateKey: getEnv("JWT_PRIVATE_KEY", "secret"),
+		JWTPublicKey:  getEnv("JWT_PUBLIC_KEY", "public_secret"),
 	}
 }
 

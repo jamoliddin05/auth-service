@@ -1,7 +1,7 @@
 package helpers
 
 import (
-	"app/bootstrap/db"
+	"app/bootstrap/configs"
 	"app/internal/handlers"
 	"app/internal/services"
 	"app/internal/uows"
@@ -15,8 +15,8 @@ import (
 )
 
 // MustInitDB инициализирует базу данных или падает
-func MustInitDB(cfg *db.Config) *db.Wrapper {
-	dbWrapper, err := db.NewDBWrapper(cfg.DSN())
+func MustInitDB(cfg *configs.Config) *configs.Wrapper {
+	dbWrapper, err := configs.NewDBWrapper(cfg.DSN())
 	if err != nil {
 		log.Fatalf("failed to init db: %v", err)
 	}
@@ -33,14 +33,18 @@ func MustRegisterValidators() {
 }
 
 // BuildAuthHandler строит слой AuthService + Gin handler
-func BuildAuthHandler(dbWrapper *db.Wrapper, jwtKey string) *handlers.GinAuthHandler {
+func BuildAuthHandler(dbWrapper *configs.Wrapper, jwtPrivateKey string, jwtPublicKey string) *handlers.GinAuthHandler {
 	uow := uows.NewUnitOfWork(dbWrapper.DB())
 	hasher := utils.NewBcryptHasher()
-	jwtHelper, err := utils.NewJWTManager(jwtKey, 15*time.Minute)
+	jwtHelper, err := utils.NewJWTManager(jwtPrivateKey, 15*time.Minute, "my_key_id")
+	if err != nil {
+		log.Fatalf("could not initialize JWT manager: %v", err)
+	}
+	jwksStr, err := configs.LoadJWKSFromPEM(jwtPublicKey, "my_key_id")
 	if err != nil {
 		log.Fatalf("could not initialize JWT manager: %v", err)
 	}
 	authSvc := services.NewAuthService(uow, hasher, jwtHelper)
-	authHandler := handlers.NewGinAuthHandler(authSvc)
+	authHandler := handlers.NewGinAuthHandler(authSvc, jwksStr)
 	return authHandler
 }

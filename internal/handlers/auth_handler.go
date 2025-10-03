@@ -16,17 +16,27 @@ import (
 // GinAuthHandler is the Gin adapter for UserService
 type GinAuthHandler struct {
 	authService *services.AuthService
+	jwksStr     string
 }
 
 // NewGinAuthHandler creates a new Gin adapter
-func NewGinAuthHandler(authService *services.AuthService) *GinAuthHandler {
-	return &GinAuthHandler{authService: authService}
+func NewGinAuthHandler(authService *services.AuthService, jwksStr string) *GinAuthHandler {
+	return &GinAuthHandler{
+		authService: authService,
+		jwksStr:     jwksStr,
+	}
 }
 
 // BindRoutes registers the routes with Gin
 func (h *GinAuthHandler) BindRoutes(r *gin.Engine) {
-	r.POST("/register", h.Register)
-	r.POST("/login", h.Login)
+	auth := r.Group("/auth")
+
+	{
+		auth.POST("/register", h.Register)
+		auth.POST("/login", h.Login)
+		auth.POST("/refresh", h.Refresh)
+		auth.GET("/.well-known/jwks.json", h.JWKS)
+	}
 }
 
 // Register handles the /register route
@@ -93,6 +103,28 @@ func (h *GinAuthHandler) Login(c *gin.Context) {
 	}
 
 	JSONSuccess(c, resp, http.StatusOK)
+}
+
+func (h *GinAuthHandler) Refresh(c *gin.Context) {
+	// Grab individual claims
+	iss := c.GetHeader("X-Claim-iss")
+	userID := c.GetHeader("X-Claim-user_id")
+	roles := c.GetHeader("X-Claim-roles")
+
+	// Or dump all headers to see what's coming in
+	headers := c.Request.Header
+
+	JSONSuccess(c, gin.H{
+		"iss":     iss,
+		"user_id": userID,
+		"roles":   roles,
+		"headers": headers,
+	}, http.StatusOK)
+}
+
+// JWKS serves the public key in JWKS format
+func (h *GinAuthHandler) JWKS(c *gin.Context) {
+	c.Data(http.StatusOK, "application/json", []byte(h.jwksStr))
 }
 
 func msgForTag(fe validator.FieldError) string {

@@ -2,18 +2,18 @@ package main
 
 import (
 	"app/bootstrap"
-	"app/bootstrap/db"
+	"app/bootstrap/configs"
 	"app/bootstrap/helpers"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	cfg := db.LoadConfig()
+	cfg := configs.LoadConfig()
 
 	dbWrapper := helpers.MustInitDB(cfg)
 	helpers.MustRegisterValidators()
 
-	authHandler := helpers.BuildAuthHandler(dbWrapper, cfg.JWTPrivateKey)
+	authHandler := helpers.BuildAuthHandler(dbWrapper, cfg.JWTPrivateKey, cfg.JWTPublicKey)
 
 	r := gin.Default()
 	authHandler.BindRoutes(r)

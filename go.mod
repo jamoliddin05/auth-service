@@ -7,6 +7,7 @@ require (
 	github.com/go-playground/validator/v10 v10.20.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
+	github.com/square/go-jose/v3 v3.0.0-20200630053402-0a67ce9b0693
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.42.0
 	gorm.io/driver/postgres v1.6.0

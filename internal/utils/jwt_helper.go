@@ -16,10 +16,11 @@ type JWTHelper interface {
 type JWTManager struct {
 	privateKey    *rsa.PrivateKey
 	tokenDuration time.Duration
+	kid           string
 }
 
 // NewJWTManager parses an RSA private key from a PEM string
-func NewJWTManager(pemKey string, duration time.Duration) (*JWTManager, error) {
+func NewJWTManager(pemKey string, duration time.Duration, kid string) (*JWTManager, error) {
 	if pemKey == "" {
 		return nil, fmt.Errorf("private key PEM string is empty")
 	}
@@ -35,6 +36,7 @@ func NewJWTManager(pemKey string, duration time.Duration) (*JWTManager, error) {
 	return &JWTManager{
 		privateKey:    privateKey,
 		tokenDuration: duration,
+		kid:           kid,
 	}, nil
 }
 
@@ -53,9 +55,11 @@ func (j *JWTManager) GenerateAccessToken(userID string, roles []string) (string,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.tokenDuration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "auth-service",
 		},
 	}
-
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	token.Header["kid"] = j.kid
+
 	return token.SignedString(j.privateKey)
 }
