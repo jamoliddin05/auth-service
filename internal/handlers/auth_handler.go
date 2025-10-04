@@ -107,15 +107,13 @@ func (h *GinAuthHandler) Login(c *gin.Context) {
 
 func (h *GinAuthHandler) Refresh(c *gin.Context) {
 	// Grab individual claims
-	iss := c.GetHeader("X-Claim-iss")
-	userID := c.GetHeader("X-Claim-user_id")
-	roles := c.GetHeader("X-Claim-roles")
+	userID := c.GetHeader("X-User-Id")
+	roles := c.GetHeader("X-User-Roles")
 
 	// Or dump all headers to see what's coming in
 	headers := c.Request.Header
 
 	JSONSuccess(c, gin.H{
-		"iss":     iss,
 		"user_id": userID,
 		"roles":   roles,
 		"headers": headers,
