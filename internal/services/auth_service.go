@@ -8,6 +8,8 @@ import (
 	"app/internal/uows"
 	"app/internal/utils"
 	"errors"
+	"fmt"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"time"
 )
@@ -121,4 +123,62 @@ func (s *AuthService) Login(req dto.LoginRequest) (*dto.LoginResponse, error) {
 		AccessToken:  accessToken,
 		RefreshToken: tokenString,
 	}, err
+}
+
+func (s *AuthService) Refresh(req dto.RefreshRequest, userId string) (*dto.RefreshResponse, error) {
+	userUUID, err := uuid.Parse(userId)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	existingUser, err := s.uow.Store().Users().GetByID(userUUID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrInvalidCredentials
+		}
+		return nil, err
+	}
+
+	tokens, err := s.uow.Store().Tokens().GetByUserID(userUUID.String())
+	if err != nil {
+		return nil, err
+	}
+
+	var matchedToken *domain.Token
+	for _, t := range tokens {
+		if s.hasher.Verify(req.RefreshToken, t.TokenHash) {
+			matchedToken = t
+			break
+		}
+	}
+
+	if matchedToken == nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	roles := make([]string, len(existingUser.Roles))
+	for i, r := range existingUser.Roles {
+		roles[i] = r.Role
+	}
+
+	accessToken, err := s.jwt.GenerateAccessToken(existingUser.ID.String(), roles)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenString, err := utils.GenerateSecureToken(32)
+	if err != nil {
+		return nil, err
+	}
+	newTokenHash := s.hasher.Hash(tokenString)
+	matchedToken.TokenHash = newTokenHash
+	err = s.uow.Store().Tokens().Save(matchedToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.RefreshResponse{
+		AccessToken:  accessToken,
+		RefreshToken: tokenString,
+	}, nil
 }

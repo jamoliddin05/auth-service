@@ -200,6 +200,45 @@ func TestGinAuthHandler_Login(t *testing.T) {
 	})
 }
 
+func TestGinAuthHandler_Refresh(t *testing.T) {
+	registerTestValidators()
+
+	t.Run("Invalid credentials - user not found", func(t *testing.T) {
+		mockUow := new(mocks.UnitOfWorkMock)
+		mockStore := new(mocks.StoreMock)
+		mockUserRepo := new(mocks.UserRepositoryMock)
+		mockTokenRepo := new(mocks.TokenRepositoryMock)
+		mockHasher := new(mocks.PasswordHasherMock)
+		mockJwtHelper := new(mocks.JWTHelperMock)
+
+		mockUow.On("Store").Return(mockStore)
+		mockStore.On("Users").Return(mockUserRepo)
+		mockStore.On("Tokens").Return(mockTokenRepo)
+
+		handler := &GinAuthHandler{
+			authService: services.NewAuthService(mockUow, mockHasher, mockJwtHelper),
+		}
+
+		userID := uuid.New()
+		mockUserRepo.On("GetByID", userID).Return(nil, gorm.ErrRecordNotFound)
+
+		r := gin.Default()
+		r.POST("/refresh", handler.Refresh)
+
+		// JSON body only needs refreshToken
+		body := `{"refreshToken":"some_token"}`
+		req := httptest.NewRequest("POST", "/refresh", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-User-Id", userID.String()) // ✅ pass userId in header
+
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Contains(t, w.Body.String(), "invalid credentials")
+	})
+}
+
 // helper to generate a fixed UUID
 func userID() uuid.UUID {
 	id, _ := uuid.Parse("11111111-1111-1111-1111-111111111111")

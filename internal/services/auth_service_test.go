@@ -146,3 +146,105 @@ func TestAuthService_Login_UserNotFound(t *testing.T) {
 	_, err := authSvc.Login(req)
 	assert.ErrorIs(t, err, ErrInvalidCredentials)
 }
+
+func TestAuthService_Refresh_Success(t *testing.T) {
+	mockUow := new(mocks.UnitOfWorkMock)
+	mockStore := new(mocks.StoreMock)
+	mockUserRepo := new(mocks.UserRepositoryMock)
+	mockTokenRepo := new(mocks.TokenRepositoryMock)
+	mockHasher := new(mocks.PasswordHasherMock)
+	mockJwtHelper := new(mocks.JWTHelperMock)
+
+	userID := uuid.New()
+	existingUser := &domain.User{
+		ID: userID,
+		Roles: []domain.UserRole{
+			{Role: "customer"},
+		},
+	}
+
+	oldToken := &domain.Token{
+		ID:        1,
+		UserID:    userID,
+		TokenHash: "old_hash",
+	}
+
+	req := dto.RefreshRequest{
+		RefreshToken: "valid_refresh_token",
+	}
+
+	// === Mock setup ===
+	mockUow.On("Store").Return(mockStore)
+	mockStore.On("Users").Return(mockUserRepo)
+	mockStore.On("Tokens").Return(mockTokenRepo)
+
+	// user exists
+	mockUserRepo.On("GetByID", userID).Return(existingUser, nil)
+
+	// tokens exist for that user
+	mockTokenRepo.On("GetByUserID", userID.String()).Return([]*domain.Token{oldToken}, nil)
+
+	// refresh token matches existing hash
+	mockHasher.On("Verify", req.RefreshToken, "old_hash").Return(true)
+
+	// hashing new token (any string input returns "new_hashed_token")
+	mockHasher.On("Hash", mock.Anything).Return("new_hashed_token")
+
+	// generating new access token
+	mockJwtHelper.On("GenerateAccessToken", userID.String(), []string{"customer"}).Return("new_access_token", nil)
+
+	// saving updated token
+	mockTokenRepo.On("Save", mock.AnythingOfType("*domain.Token")).Return(nil)
+
+	// === Execute ===
+	authSvc := NewAuthService(mockUow, mockHasher, mockJwtHelper)
+	resp, err := authSvc.Refresh(req, userID.String())
+
+	// === Assertions ===
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, "new_access_token", resp.AccessToken)
+	assert.NotEmpty(t, resp.RefreshToken)
+
+	mockUow.AssertExpectations(t)
+	mockStore.AssertExpectations(t)
+	mockUserRepo.AssertExpectations(t)
+	mockTokenRepo.AssertExpectations(t)
+	mockHasher.AssertExpectations(t)
+	mockJwtHelper.AssertExpectations(t)
+}
+
+func TestAuthService_Refresh_InvalidUserID(t *testing.T) {
+	authSvc := NewAuthService(nil, nil, nil)
+	req := dto.RefreshRequest{}
+	_, err := authSvc.Refresh(req, "not-a-uuid")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid user ID")
+}
+
+func TestAuthService_Refresh_NoMatchingToken(t *testing.T) {
+	mockUow := new(mocks.UnitOfWorkMock)
+	mockStore := new(mocks.StoreMock)
+	mockUserRepo := new(mocks.UserRepositoryMock)
+	mockTokenRepo := new(mocks.TokenRepositoryMock)
+	mockHasher := new(mocks.PasswordHasherMock)
+
+	userID := uuid.New()
+	existingUser := &domain.User{ID: userID}
+	req := dto.RefreshRequest{RefreshToken: "badtoken"}
+
+	mockUow.On("Store").Return(mockStore)
+	mockStore.On("Users").Return(mockUserRepo)
+	mockStore.On("Tokens").Return(mockTokenRepo)
+
+	mockUserRepo.On("GetByID", userID).Return(existingUser, nil)
+	mockTokenRepo.On("GetByUserID", userID.String()).Return([]*domain.Token{
+		{TokenHash: "hash1"},
+	}, nil)
+	mockHasher.On("Verify", req.RefreshToken, "hash1").Return(false)
+
+	authSvc := NewAuthService(mockUow, mockHasher, nil)
+	_, err := authSvc.Refresh(req, userID.String())
+
+	assert.ErrorIs(t, err, ErrInvalidCredentials)
+}

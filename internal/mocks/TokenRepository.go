@@ -109,6 +109,36 @@ func (_m *TokenRepositoryMock) GetByID(id uint) (*domain.Token, error) {
 	return r0, r1
 }
 
+// GetByUserID provides a mock function with given fields: userID
+func (_m *TokenRepositoryMock) GetByUserID(userID string) ([]*domain.Token, error) {
+	ret := _m.Called(userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetByUserID")
+	}
+
+	var r0 []*domain.Token
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]*domain.Token, error)); ok {
+		return rf(userID)
+	}
+	if rf, ok := ret.Get(0).(func(string) []*domain.Token); ok {
+		r0 = rf(userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain.Token)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Save provides a mock function with given fields: token
 func (_m *TokenRepositoryMock) Save(token *domain.Token) error {
 	ret := _m.Called(token)

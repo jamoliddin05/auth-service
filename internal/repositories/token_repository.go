@@ -12,6 +12,7 @@ type TokenRepository interface {
 	GetByHash(hash string) (*domain.Token, error)
 	Delete(id uint) error
 	DeleteByUser(userID string) error
+	GetByUserID(userID string) ([]*domain.Token, error)
 }
 
 type TokenRepositoryImpl struct {
@@ -23,7 +24,7 @@ func NewTokenRepository(db *gorm.DB) TokenRepository {
 }
 
 func (r *TokenRepositoryImpl) Save(token *domain.Token) error {
-	return r.db.Create(token).Error
+	return r.db.Save(token).Error
 }
 
 func (r *TokenRepositoryImpl) GetByID(id uint) (*domain.Token, error) {
@@ -48,4 +49,12 @@ func (r *TokenRepositoryImpl) Delete(id uint) error {
 
 func (r *TokenRepositoryImpl) DeleteByUser(userID string) error {
 	return r.db.Where("user_id = ?", userID).Delete(&domain.Token{}).Error
+}
+
+func (r *TokenRepositoryImpl) GetByUserID(userID string) ([]*domain.Token, error) {
+	var tokens []*domain.Token
+	if err := r.db.Where("user_id = ?", userID).Find(&tokens).Error; err != nil {
+		return nil, err
+	}
+	return tokens, nil
 }

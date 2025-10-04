@@ -106,18 +106,37 @@ func (h *GinAuthHandler) Login(c *gin.Context) {
 }
 
 func (h *GinAuthHandler) Refresh(c *gin.Context) {
-	// Grab individual claims
+	var req dto.RefreshRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		var ve validator.ValidationErrors
+		if errors.As(err, &ve) {
+			errorsMap := make(map[string]string)
+			for _, fe := range ve {
+				errorsMap[strings.ToLower(fe.Field())] = msgForTag(fe)
+			}
+			JSONError(c, "Validation failed", http.StatusBadRequest, errorsMap)
+			return
+		}
+
+		JSONError(c, err.Error(), http.StatusBadRequest, nil)
+		return
+	}
+
 	userID := c.GetHeader("X-User-Id")
-	roles := c.GetHeader("X-User-Roles")
 
-	// Or dump all headers to see what's coming in
-	headers := c.Request.Header
+	resp, err := h.authService.Refresh(req, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrInvalidCredentials):
+			JSONError(c, err.Error(), http.StatusUnauthorized, nil)
+		default:
+			JSONError(c, err.Error(), http.StatusInternalServerError, nil)
+		}
+		return
+	}
 
-	JSONSuccess(c, gin.H{
-		"user_id": userID,
-		"roles":   roles,
-		"headers": headers,
-	}, http.StatusOK)
+	JSONSuccess(c, resp, http.StatusOK)
 }
 
 // JWKS serves the public key in JWKS format
