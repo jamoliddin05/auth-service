@@ -1,5 +1,7 @@
 package dto
 
+import "app/internal/domain"
+
 type RegisterRequest struct {
 	Phone    string `json:"phone" binding:"required,uzphone"`
 	Password string `json:"password" binding:"required,min=6"`
@@ -28,4 +30,8 @@ type RefreshRequest struct {
 type RefreshResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+}
+
+type UserResponse struct {
+	User domain.User `json:"user"`
 }

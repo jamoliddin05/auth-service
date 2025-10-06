@@ -35,6 +35,7 @@ func (h *GinAuthHandler) BindRoutes(r *gin.Engine) {
 		auth.POST("/register", h.Register)
 		auth.POST("/login", h.Login)
 		auth.POST("/refresh", h.Refresh)
+		auth.GET("/me", h.GetMe)
 		auth.GET("/.well-known/jwks.json", h.JWKS)
 	}
 }
@@ -126,6 +127,23 @@ func (h *GinAuthHandler) Refresh(c *gin.Context) {
 	userID := c.GetHeader("X-User-Id")
 
 	resp, err := h.authService.Refresh(req, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrInvalidCredentials):
+			JSONError(c, err.Error(), http.StatusUnauthorized, nil)
+		default:
+			JSONError(c, err.Error(), http.StatusInternalServerError, nil)
+		}
+		return
+	}
+
+	JSONSuccess(c, resp, http.StatusOK)
+}
+
+func (h *GinAuthHandler) GetMe(c *gin.Context) {
+	userID := c.GetHeader("X-User-Id")
+
+	resp, err := h.authService.GetMe(userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidCredentials):

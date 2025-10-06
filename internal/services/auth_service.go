@@ -182,3 +182,22 @@ func (s *AuthService) Refresh(req dto.RefreshRequest, userId string) (*dto.Refre
 		RefreshToken: tokenString,
 	}, nil
 }
+
+func (s *AuthService) GetMe(userId string) (*dto.UserResponse, error) {
+	userUUID, err := uuid.Parse(userId)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	existingUser, err := s.uow.Store().Users().GetByID(userUUID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrInvalidCredentials
+		}
+		return nil, err
+	}
+
+	return &dto.UserResponse{
+		User: *existingUser,
+	}, nil
+}
