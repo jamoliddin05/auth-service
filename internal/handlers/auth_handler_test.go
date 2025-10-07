@@ -67,7 +67,7 @@ func TestGinAuthHandler_Register(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("POST", "/register",
-			strings.NewReader(`{"phone": "+998901234567", "password": "password123"}`))
+			strings.NewReader(`{"phone": "+998901234567", "password": "password123", "name": "Jamol", "surname": "Jackson"}`))
 		req.Header.Set("Content-Type", "application/json")
 
 		r.ServeHTTP(w, req)
@@ -104,7 +104,7 @@ func TestGinAuthHandler_Register(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("POST", "/register",
-			strings.NewReader(`{"phone": "+998901234567", "password": "password123"}`))
+			strings.NewReader(`{"phone": "+998901234567", "password": "password123", "name": "Jamol", "surname": "Jackson"}`))
 		req.Header.Set("Content-Type", "application/json")
 
 		r.ServeHTTP(w, req)

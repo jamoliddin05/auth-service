@@ -10,6 +10,8 @@ func DTOToUser(req dto.RegisterRequest) *domain.User {
 	return &domain.User{
 		Phone:    req.Phone,
 		Password: req.Password,
+		Name:     req.Name,
+		Surname:  req.Surname,
 	}
 }
 

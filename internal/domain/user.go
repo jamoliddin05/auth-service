@@ -12,6 +12,8 @@ type User struct {
 	ID        uuid.UUID  `json:"id" gorm:"type:uuid;primary_key;"`
 	Phone     string     `json:"phone" gorm:"uniqueIndex;not null"`
 	Password  string     `json:"-" gorm:"not null"`
+	Name      string     `json:"name"`
+	Surname   string     `json:"surname"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
 	Roles     []UserRole `json:"roles" gorm:"foreignKey:UserID"`

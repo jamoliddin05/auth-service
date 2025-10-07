@@ -5,6 +5,8 @@ import "app/internal/domain"
 type RegisterRequest struct {
 	Phone    string `json:"phone" binding:"required,uzphone"`
 	Password string `json:"password" binding:"required,min=6"`
+	Name     string `json:"name" binding:"required"`
+	Surname  string `json:"surname" binding:"required"`
 }
 
 type RegisterResponse struct {
