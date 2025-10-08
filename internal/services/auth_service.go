@@ -152,7 +152,7 @@ func (s *AuthService) Refresh(req dto.RefreshRequest, userId string) (*dto.Refre
 		}
 	}
 
-	if matchedToken == nil || matchedToken.ExpiresAt.After(time.Now()) {
+	if matchedToken == nil || matchedToken.ExpiresAt.Before(time.Now()) {
 		return nil, ErrInvalidCredentials
 	}
 
