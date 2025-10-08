@@ -7,6 +7,7 @@ import (
 	"app/internal/repositories"
 	"gorm.io/gorm"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -167,6 +168,7 @@ func TestAuthService_Refresh_Success(t *testing.T) {
 		ID:        1,
 		UserID:    userID,
 		TokenHash: "old_hash",
+		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
 
 	req := dto.RefreshRequest{
