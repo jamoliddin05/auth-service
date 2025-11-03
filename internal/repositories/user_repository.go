@@ -8,7 +8,7 @@ import (
 
 //go:generate mockery --name=UserRepository --output=../mocks --structname=UserRepositoryMock
 type UserRepository interface {
-	Create(u *domain.User) error
+	Save(u *domain.User) error
 	GetByID(id uuid.UUID) (*domain.User, error)
 	GetByPhone(phone string) (*domain.User, error)
 }
@@ -21,8 +21,8 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 	return &UserRepositoryImpl{db: db}
 }
 
-func (r *UserRepositoryImpl) Create(u *domain.User) error {
-	return r.db.Create(u).Error
+func (r *UserRepositoryImpl) Save(u *domain.User) error {
+	return r.db.Save(u).Error
 }
 
 func (r *UserRepositoryImpl) GetByID(id uuid.UUID) (*domain.User, error) {

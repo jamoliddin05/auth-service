@@ -3,6 +3,6 @@ root = "."
 tmp_dir = "/app/tmp"
 
 [build]
-cmd = "go build -o tmp/main ./cmd/"
+cmd = "go build -o tmp/main ./cmd/app/"
 bin = "tmp/main"
 include_ext = ["go"]
