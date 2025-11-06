@@ -3,7 +3,6 @@ package services
 import (
 	"app/internal/domain"
 	"app/internal/dto"
-	"app/internal/mappers"
 	"app/internal/repositories"
 	"app/internal/uows"
 	"app/internal/utils"
@@ -38,7 +37,7 @@ func NewAuthService(
 	}
 }
 
-func (s *AuthService) Register(req dto.RegisterRequest) (*dto.RegisterResponse, error) {
+func (s *AuthService) Register(req dto.RegisterRequest) (*dto.UserResponse, error) {
 	existingUser, err := s.uow.Store().Users().GetByPhone(req.Phone)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
@@ -47,16 +46,19 @@ func (s *AuthService) Register(req dto.RegisterRequest) (*dto.RegisterResponse, 
 		return nil, ErrUserAlreadyExists
 	}
 
-	user := mappers.DTOToUser(req)
+	user := &domain.User{
+		Phone:    req.Phone,
+		Password: req.Password,
+		Name:     req.Name,
+		Surname:  req.Surname,
+	}
 
 	user.Password = s.hasher.Hash(user.Password)
 
-	// Assign default role
 	user.Roles = []domain.UserRole{
 		{Role: domain.RoleCustomer},
 	}
 
-	// Do registration in a transaction
 	err = s.uow.DoRegistration(func(userRepo repositories.UserRepository, eventRepo repositories.EventRepository) error {
 		if err := userRepo.Save(user); err != nil {
 			return err
@@ -67,10 +69,12 @@ func (s *AuthService) Register(req dto.RegisterRequest) (*dto.RegisterResponse, 
 		return nil, err
 	}
 
-	return mappers.UserToDTO(user), nil
+	return &dto.UserResponse{
+		User: *user,
+	}, nil
 }
 
-func (s *AuthService) Login(req dto.LoginRequest) (*dto.LoginResponse, error) {
+func (s *AuthService) Login(req dto.LoginRequest) (*dto.TokenResponse, error) {
 	existingUser, err := s.uow.Store().Users().GetByPhone(req.Phone)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -105,13 +109,13 @@ func (s *AuthService) Login(req dto.LoginRequest) (*dto.LoginResponse, error) {
 		return nil, err
 	}
 
-	return &dto.LoginResponse{
+	return &dto.TokenResponse{
 		AccessToken:  refreshResp.AccessToken,
 		RefreshToken: refreshResp.RefreshToken,
 	}, nil
 }
 
-func (s *AuthService) BecomeSeller(userId string) (*dto.RefreshResponse, error) {
+func (s *AuthService) BecomeSeller(userId string) (*dto.TokenResponse, error) {
 	userUUID, err := uuid.Parse(userId)
 	if err != nil {
 		return nil, ErrInvalidCredentials
@@ -150,7 +154,7 @@ func (s *AuthService) BecomeSeller(userId string) (*dto.RefreshResponse, error) 
 	return resp, nil
 }
 
-func (s *AuthService) Refresh(req dto.RefreshRequest, userId string) (*dto.RefreshResponse, error) {
+func (s *AuthService) Refresh(req dto.RefreshRequest, userId string) (*dto.TokenResponse, error) {
 	userUUID, err := uuid.Parse(userId)
 	if err != nil {
 		return nil, fmt.Errorf("invalid user ID: %w", err)
@@ -206,7 +210,7 @@ func (s *AuthService) validateRefreshToken(userID uuid.UUID, refreshToken string
 	return false, nil
 }
 
-func (s *AuthService) generateRefreshResponse(user *domain.User) (*dto.RefreshResponse, error) {
+func (s *AuthService) generateRefreshResponse(user *domain.User) (*dto.TokenResponse, error) {
 	roles := make([]string, len(user.Roles))
 	for i, r := range user.Roles {
 		roles[i] = r.Role
@@ -233,7 +237,7 @@ func (s *AuthService) generateRefreshResponse(user *domain.User) (*dto.RefreshRe
 		return nil, err
 	}
 
-	return &dto.RefreshResponse{
+	return &dto.TokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: tokenString,
 	}, nil

@@ -28,7 +28,10 @@ func TestAuthService_Register_Success(t *testing.T) {
 
 	mockHasher.On("Hash", "password123").Return("hashed_password")
 	mockUserRepo.On("GetByPhone", "+1234567890").Return(nil, nil)
-	mockUserRepo.On("Create", mock.Anything).Return(nil)
+	mockUserRepo.On("Save", mock.Anything).Return(func(u *domain.User) error {
+		u.ID = uuid.New()
+		return nil
+	})
 	mockEventRepo.On("Save", "UserRegistered", mock.Anything).Return(nil)
 
 	mockUow.On("DoRegistration", mock.Anything).Run(func(args mock.Arguments) {
@@ -42,9 +45,14 @@ func TestAuthService_Register_Success(t *testing.T) {
 	resp, err := authSvc.Register(req)
 
 	assert.NoError(t, err)
-	assert.Equal(t, req.Phone, resp.Phone)
-	assert.NotEmpty(t, resp.ID)
-	assert.Contains(t, resp.Roles, "customer")
+	assert.NotEmpty(t, resp.User.ID)
+	assert.Equal(t, req.Phone, resp.User.Phone)
+
+	roles := make([]string, len(resp.User.Roles))
+	for i, r := range resp.User.Roles {
+		roles[i] = r.Role
+	}
+	assert.Contains(t, roles, "customer")
 }
 
 func TestAuthService_Register_UserAlreadyExists(t *testing.T) {
@@ -78,6 +86,7 @@ func TestAuthService_Login_Success(t *testing.T) {
 
 	mockUow.On("Store").Return(mockStore)
 	mockStore.On("Users").Return(mockUserRepo)
+	mockStore.On("Tokens").Return(mockTokenRepo)
 	mockStore.On("Outbox").Return(mockEventRepo)
 
 	existingUser := &domain.User{

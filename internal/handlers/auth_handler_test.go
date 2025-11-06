@@ -91,12 +91,12 @@ func TestGinAuthHandler_Register(t *testing.T) {
 		handler := &GinAuthHandler{authService: services.NewAuthService(mockUow, mockHasher, mockJwtHelper)}
 
 		mockUserRepo.On("GetByPhone", "+998901234567").Return(nil, nil)
-		mockUserRepo.On("Create", mock.Anything).Return(nil)
+		mockUserRepo.On("Save", mock.Anything).Return(nil)
 		mockEventRepo.On("Save", "UserRegistered", mock.Anything).Return(nil)
 		mockHasher.On("Hash", "password123").Return("hashed_password")
 		mockUow.On("DoRegistration", mock.Anything).Run(func(args mock.Arguments) {
 			cb := args.Get(0).(func(repositories.UserRepository, repositories.EventRepository) error)
-			_ = cb(mockUserRepo, mockEventRepo) // pass mocks as interface
+			_ = cb(mockUserRepo, mockEventRepo)
 		}).Return(nil)
 
 		r := gin.Default()
@@ -157,6 +157,7 @@ func TestGinAuthHandler_Login(t *testing.T) {
 
 		mockUow.On("Store").Return(mockStore)
 		mockStore.On("Users").Return(mockUserRepo)
+		mockStore.On("Tokens").Return(mockTokenRepo)
 		mockStore.On("Outbox").Return(mockEventRepo)
 
 		handler := &GinAuthHandler{

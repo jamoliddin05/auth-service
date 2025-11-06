@@ -15,24 +15,6 @@ type UserRepositoryMock struct {
 	mock.Mock
 }
 
-// Create provides a mock function with given fields: u
-func (_m *UserRepositoryMock) Create(u *domain.User) error {
-	ret := _m.Called(u)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Create")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*domain.User) error); ok {
-		r0 = rf(u)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // GetByID provides a mock function with given fields: id
 func (_m *UserRepositoryMock) GetByID(id uuid.UUID) (*domain.User, error) {
 	ret := _m.Called(id)
@@ -91,6 +73,24 @@ func (_m *UserRepositoryMock) GetByPhone(phone string) (*domain.User, error) {
 	}
 
 	return r0, r1
+}
+
+// Save provides a mock function with given fields: u
+func (_m *UserRepositoryMock) Save(u *domain.User) error {
+	ret := _m.Called(u)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Save")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*domain.User) error); ok {
+		r0 = rf(u)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // NewUserRepositoryMock creates a new instance of UserRepositoryMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

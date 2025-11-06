@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"github.com/go-playground/validator/v10"
 	"net/http"
 	"strings"
@@ -19,7 +18,6 @@ type GinAuthHandler struct {
 	jwksStr     string
 }
 
-// NewGinAuthHandler creates a new Gin adapter
 func NewGinAuthHandler(authService *services.AuthService, jwksStr string) *GinAuthHandler {
 	return &GinAuthHandler{
 		authService: authService,
@@ -27,36 +25,23 @@ func NewGinAuthHandler(authService *services.AuthService, jwksStr string) *GinAu
 	}
 }
 
-// BindRoutes registers the routes with Gin
 func (h *GinAuthHandler) BindRoutes(r *gin.Engine) {
 	auth := r.Group("/auth")
 
-	{
-		auth.POST("/register", h.Register)
-		auth.POST("/login", h.Login)
-		auth.POST("/refresh", h.Refresh)
-		auth.POST("/become-seller", h.BecomeSeller)
-		auth.GET("/me", h.GetMe)
-		auth.GET("/.well-known/jwks.json", h.JWKS)
-	}
+	auth.POST("/register", h.Register)
+	auth.POST("/login", h.Login)
+	auth.POST("/refresh", h.Refresh)
+	auth.POST("/become-seller", h.BecomeSeller)
+	auth.GET("/me", h.GetMe)
+	auth.GET("/.well-known/jwks.json", h.JWKS)
+
 }
 
-// Register handles the /register route
 func (h *GinAuthHandler) Register(c *gin.Context) {
 	var req dto.RegisterRequest
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		var ve validator.ValidationErrors
-		if errors.As(err, &ve) {
-			errorsMap := make(map[string]string)
-			for _, fe := range ve {
-				errorsMap[strings.ToLower(fe.Field())] = msgForTag(fe)
-			}
-			JSONError(c, "Validation failed", http.StatusBadRequest, errorsMap)
-			return
-		}
-
-		JSONError(c, err.Error(), http.StatusBadRequest, nil)
+	vr := h.bindAndValidate(c, &req)
+	if !vr.Valid {
+		h.respondValidationError(c, vr)
 		return
 	}
 
@@ -64,32 +49,22 @@ func (h *GinAuthHandler) Register(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrUserAlreadyExists):
-			JSONError(c, err.Error(), http.StatusConflict, nil)
+			JSONError(c, http.StatusConflict, map[string]string{"code": string(ErrUserExists)})
 		default:
-			JSONError(c, err.Error(), http.StatusInternalServerError, nil)
+			JSONError(c, http.StatusInternalServerError, map[string]string{"code": string(ErrInternal)})
 		}
 		return
 	}
 
 	JSONSuccess(c, resp, http.StatusCreated)
+
 }
 
-// Login handles the /login route
 func (h *GinAuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		var ve validator.ValidationErrors
-		if errors.As(err, &ve) {
-			errorsMap := make(map[string]string)
-			for _, fe := range ve {
-				errorsMap[strings.ToLower(fe.Field())] = msgForTag(fe)
-			}
-			JSONError(c, "Validation failed", http.StatusBadRequest, errorsMap)
-			return
-		}
-
-		JSONError(c, err.Error(), http.StatusBadRequest, nil)
+	vr := h.bindAndValidate(c, &req)
+	if !vr.Valid {
+		h.respondValidationError(c, vr)
 		return
 	}
 
@@ -97,48 +72,39 @@ func (h *GinAuthHandler) Login(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidCredentials):
-			JSONError(c, err.Error(), http.StatusUnauthorized, nil)
+			JSONError(c, http.StatusUnauthorized, map[string]string{"code": string(ErrInvalidCredentials)})
 		default:
-			JSONError(c, err.Error(), http.StatusInternalServerError, nil)
+			JSONError(c, http.StatusInternalServerError, map[string]string{"code": string(ErrInternal)})
 		}
 		return
 	}
 
 	JSONSuccess(c, resp, http.StatusOK)
+
 }
 
 func (h *GinAuthHandler) Refresh(c *gin.Context) {
 	var req dto.RefreshRequest
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		var ve validator.ValidationErrors
-		if errors.As(err, &ve) {
-			errorsMap := make(map[string]string)
-			for _, fe := range ve {
-				errorsMap[strings.ToLower(fe.Field())] = msgForTag(fe)
-			}
-			JSONError(c, "Validation failed", http.StatusBadRequest, errorsMap)
-			return
-		}
-
-		JSONError(c, err.Error(), http.StatusBadRequest, nil)
+	vr := h.bindAndValidate(c, &req)
+	if !vr.Valid {
+		h.respondValidationError(c, vr)
 		return
 	}
 
 	userID := c.GetHeader("X-User-Id")
-
 	resp, err := h.authService.Refresh(req, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidCredentials):
-			JSONError(c, err.Error(), http.StatusUnauthorized, nil)
+			JSONError(c, http.StatusUnauthorized, map[string]string{"code": string(ErrInvalidCredentials)})
 		default:
-			JSONError(c, err.Error(), http.StatusInternalServerError, nil)
+			JSONError(c, http.StatusInternalServerError, map[string]string{"code": string(ErrInternal)})
 		}
 		return
 	}
 
 	JSONSuccess(c, resp, http.StatusOK)
+
 }
 
 func (h *GinAuthHandler) BecomeSeller(c *gin.Context) {
@@ -147,14 +113,15 @@ func (h *GinAuthHandler) BecomeSeller(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidCredentials):
-			JSONError(c, err.Error(), http.StatusUnauthorized, nil)
+			JSONError(c, http.StatusUnauthorized, map[string]string{"code": string(ErrInvalidCredentials)})
 		default:
-			JSONError(c, err.Error(), http.StatusInternalServerError, nil)
+			JSONError(c, http.StatusInternalServerError, map[string]string{"code": string(ErrInternal)})
 		}
 		return
 	}
 
 	JSONSuccess(c, resp, http.StatusOK)
+
 }
 
 func (h *GinAuthHandler) GetMe(c *gin.Context) {
@@ -164,30 +131,67 @@ func (h *GinAuthHandler) GetMe(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidCredentials):
-			JSONError(c, err.Error(), http.StatusUnauthorized, nil)
+			JSONError(c, http.StatusUnauthorized, map[string]string{"code": string(ErrInvalidCredentials)})
 		default:
-			JSONError(c, err.Error(), http.StatusInternalServerError, nil)
+			JSONError(c, http.StatusInternalServerError, map[string]string{"code": string(ErrInternal)})
 		}
 		return
 	}
 
 	JSONSuccess(c, resp, http.StatusOK)
+
 }
 
-// JWKS serves the public key in JWKS format
 func (h *GinAuthHandler) JWKS(c *gin.Context) {
 	c.Data(http.StatusOK, "application/json", []byte(h.jwksStr))
 }
 
-func msgForTag(fe validator.FieldError) string {
+func (h *GinAuthHandler) bindAndValidate(c *gin.Context, req any) ValidationResult {
+	if err := c.ShouldBindJSON(req); err != nil {
+		var ve validator.ValidationErrors
+		if errors.As(err, &ve) {
+			errorsMap := make(map[string]string)
+			for _, fe := range ve {
+				field := strings.ToLower(fe.Field())
+				errorsMap[field] = codeForTag(fe)
+			}
+			return ValidationResult{Valid: false, Errors: errorsMap}
+		}
+		return ValidationResult{Valid: false, Err: err}
+	}
+	return ValidationResult{Valid: true}
+}
+
+func (h *GinAuthHandler) respondValidationError(c *gin.Context, vr ValidationResult) {
+	errorsMap := make(map[string]string)
+
+	// Use field-specific errors if available
+	if len(vr.Errors) > 0 {
+		for k, v := range vr.Errors {
+			errorsMap[k] = v
+		}
+	}
+
+	// Fallback for general errors if no field-specific ones exist
+	if vr.Err != nil || len(errorsMap) == 0 {
+		errorsMap["code"] = string(ErrBadRequest)
+	}
+
+	JSONError(c, http.StatusBadRequest, errorsMap)
+}
+
+// --- Error Code Mapper ---
+func codeForTag(fe validator.FieldError) string {
 	switch fe.Tag() {
 	case "required":
-		return fmt.Sprintf("%s is required", fe.Field())
+		return string(ErrRequired)
 	case "min":
-		return fmt.Sprintf("%s must be at least %s characters", fe.Field(), fe.Param())
+		return string(ErrMinLength)
+	case "max":
+		return string(ErrMaxLength)
 	case "uzphone":
-		return "Phone number must be a valid Uzbekistan phone number"
+		return string(ErrInvalidPhone)
 	default:
-		return fmt.Sprintf("%s is not valid", fe.Field())
+		return string(ErrInvalidField)
 	}
 }

@@ -29,6 +29,10 @@ func MustRegisterValidators() {
 		if err := v.RegisterValidation("uzphone", validators.UzPhoneValidator); err != nil {
 			log.Fatalf("could not register uzphone validator: %v", err)
 		}
+
+		if err := v.RegisterValidation("letters", validators.LettersValidator); err != nil {
+			log.Fatalf("could not register letters validator: %v", err)
+		}
 	}
 }
 
