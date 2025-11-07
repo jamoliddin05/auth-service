@@ -14,8 +14,8 @@ type User struct {
 	Password  string     `json:"-" gorm:"not null"`
 	Name      string     `json:"name"`
 	Surname   string     `json:"surname"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
+	CreatedAt time.Time  `json:"-"`
+	UpdatedAt time.Time  `json:"-"`
 	Roles     []UserRole `json:"roles" gorm:"foreignKey:UserID"`
 }
 
@@ -29,8 +29,8 @@ func (u *User) BeforeCreate(_ *gorm.DB) error {
 
 // UserRole represents the many-to-many relationship between users and roles
 type UserRole struct {
-	ID     uint      `json:"id" gorm:"primaryKey"`
-	UserID uuid.UUID `json:"user_id" gorm:"type:uuid;not null"`
+	ID     uint      `json:"-" gorm:"primaryKey"`
+	UserID uuid.UUID `json:"-" gorm:"type:uuid;not null"`
 	Role   string    `json:"role" gorm:"not null"`
 	User   User      `json:"-" gorm:"foreignKey:UserID"`
 }

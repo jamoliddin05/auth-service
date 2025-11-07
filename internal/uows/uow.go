@@ -1,47 +1,29 @@
 package uows
 
 import (
-	"app/internal/repositories"
 	"app/internal/stores"
 	"gorm.io/gorm"
 )
 
 //go:generate mockery --name=UnitOfWork --output=../mocks --structname=UnitOfWorkMock
-type UnitOfWork interface {
-	Store() stores.Store
-	DoRegistration(fn func(userRepo repositories.UserRepository, eventRepo repositories.EventRepository) error) error
-	DoLogin(fn func(tokenRepo repositories.TokenRepository, eventRepo repositories.EventRepository) error) error
+type UserTokenUnitOfWork interface {
+	DoTransaction(fn func(txStores stores.UserTokenStore) error) error
 }
 
-type gormUnitOfWork struct {
-	db    *gorm.DB
-	store stores.Store
+type UserTokenUnitOfWorkImpl struct {
+	db *gorm.DB
 }
 
-func NewUnitOfWork(db *gorm.DB) UnitOfWork {
-	return &gormUnitOfWork{
-		db:    db,
-		store: stores.NewStore(db),
+func NewUnitOfWork(db *gorm.DB) UserTokenUnitOfWork {
+	return &UserTokenUnitOfWorkImpl{
+		db: db,
 	}
 }
 
-// Store plain store
-func (u *gormUnitOfWork) Store() stores.Store {
-	return u.store
-}
-
-// DoRegistration with tx
-func (u *gormUnitOfWork) DoRegistration(fn func(repositories.UserRepository, repositories.EventRepository) error) error {
+// DoTransaction runs a function inside a transaction with a transactional store
+func (u *UserTokenUnitOfWorkImpl) DoTransaction(fn func(txStores stores.UserTokenStore) error) error {
 	return u.db.Transaction(func(tx *gorm.DB) error {
 		txStore := stores.NewStore(tx)
-		return fn(txStore.Users(), txStore.Outbox())
-	})
-}
-
-// DoLogin with tx
-func (u *gormUnitOfWork) DoLogin(fn func(tokenRepo repositories.TokenRepository, eventRepo repositories.EventRepository) error) error {
-	return u.db.Transaction(func(tx *gorm.DB) error {
-		txStore := stores.NewStore(tx)
-		return fn(txStore.Tokens(), txStore.Outbox())
+		return fn(txStore)
 	})
 }

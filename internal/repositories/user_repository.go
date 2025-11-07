@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"app/internal/domain"
+	"errors"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -27,16 +28,26 @@ func (r *UserRepositoryImpl) Save(u *domain.User) error {
 
 func (r *UserRepositoryImpl) GetByID(id uuid.UUID) (*domain.User, error) {
 	var user domain.User
-	if err := r.db.Preload("Roles").First(&user, "id = ?", id).Error; err != nil {
+	err := r.db.Preload("Roles").First(&user, "id = ?", id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
 		return nil, err
 	}
+
 	return &user, nil
 }
 
 func (r *UserRepositoryImpl) GetByPhone(phone string) (*domain.User, error) {
 	var user domain.User
-	if err := r.db.Preload("Roles").First(&user, "phone = ?", phone).Error; err != nil {
+	err := r.db.Preload("Roles").First(&user, "phone = ?", phone).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
 		return nil, err
 	}
+
 	return &user, nil
 }

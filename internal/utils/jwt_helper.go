@@ -25,7 +25,6 @@ func NewJWTManager(pemKey string, duration time.Duration, kid string) (*JWTManag
 		return nil, fmt.Errorf("private key PEM string is empty")
 	}
 
-	// Replace literal \n with actual newlines
 	pemKey = strings.ReplaceAll(pemKey, `\n`, "\n")
 
 	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(pemKey))

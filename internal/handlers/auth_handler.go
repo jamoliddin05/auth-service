@@ -12,32 +12,31 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GinAuthHandler is the Gin adapter for UserService
-type GinAuthHandler struct {
+type AuthHandler struct {
 	authService *services.AuthService
 	jwksStr     string
 }
 
-func NewGinAuthHandler(authService *services.AuthService, jwksStr string) *GinAuthHandler {
-	return &GinAuthHandler{
+func NewAuthHandler(authService *services.AuthService, jwksStr string) *AuthHandler {
+	return &AuthHandler{
 		authService: authService,
 		jwksStr:     jwksStr,
 	}
 }
 
-func (h *GinAuthHandler) BindRoutes(r *gin.Engine) {
+func (h *AuthHandler) BindRoutes(r *gin.Engine) {
 	auth := r.Group("/auth")
 
 	auth.POST("/register", h.Register)
 	auth.POST("/login", h.Login)
 	auth.POST("/refresh", h.Refresh)
-	auth.POST("/become-seller", h.BecomeSeller)
+	auth.POST("/promote-to-seller", h.PromoteToSeller)
 	auth.GET("/me", h.GetMe)
 	auth.GET("/.well-known/jwks.json", h.JWKS)
 
 }
 
-func (h *GinAuthHandler) Register(c *gin.Context) {
+func (h *AuthHandler) Register(c *gin.Context) {
 	var req dto.RegisterRequest
 	vr := h.bindAndValidate(c, &req)
 	if !vr.Valid {
@@ -60,7 +59,7 @@ func (h *GinAuthHandler) Register(c *gin.Context) {
 
 }
 
-func (h *GinAuthHandler) Login(c *gin.Context) {
+func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	vr := h.bindAndValidate(c, &req)
 	if !vr.Valid {
@@ -83,7 +82,7 @@ func (h *GinAuthHandler) Login(c *gin.Context) {
 
 }
 
-func (h *GinAuthHandler) Refresh(c *gin.Context) {
+func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req dto.RefreshRequest
 	vr := h.bindAndValidate(c, &req)
 	if !vr.Valid {
@@ -107,9 +106,9 @@ func (h *GinAuthHandler) Refresh(c *gin.Context) {
 
 }
 
-func (h *GinAuthHandler) BecomeSeller(c *gin.Context) {
+func (h *AuthHandler) PromoteToSeller(c *gin.Context) {
 	userID := c.GetHeader("X-User-Id")
-	resp, err := h.authService.BecomeSeller(userID)
+	resp, err := h.authService.PromoteToSeller(userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidCredentials):
@@ -124,7 +123,7 @@ func (h *GinAuthHandler) BecomeSeller(c *gin.Context) {
 
 }
 
-func (h *GinAuthHandler) GetMe(c *gin.Context) {
+func (h *AuthHandler) GetMe(c *gin.Context) {
 	userID := c.GetHeader("X-User-Id")
 
 	resp, err := h.authService.GetMe(userID)
@@ -142,11 +141,11 @@ func (h *GinAuthHandler) GetMe(c *gin.Context) {
 
 }
 
-func (h *GinAuthHandler) JWKS(c *gin.Context) {
+func (h *AuthHandler) JWKS(c *gin.Context) {
 	c.Data(http.StatusOK, "application/json", []byte(h.jwksStr))
 }
 
-func (h *GinAuthHandler) bindAndValidate(c *gin.Context, req any) ValidationResult {
+func (h *AuthHandler) bindAndValidate(c *gin.Context, req any) ValidationResult {
 	if err := c.ShouldBindJSON(req); err != nil {
 		var ve validator.ValidationErrors
 		if errors.As(err, &ve) {
@@ -162,17 +161,15 @@ func (h *GinAuthHandler) bindAndValidate(c *gin.Context, req any) ValidationResu
 	return ValidationResult{Valid: true}
 }
 
-func (h *GinAuthHandler) respondValidationError(c *gin.Context, vr ValidationResult) {
+func (h *AuthHandler) respondValidationError(c *gin.Context, vr ValidationResult) {
 	errorsMap := make(map[string]string)
 
-	// Use field-specific errors if available
 	if len(vr.Errors) > 0 {
 		for k, v := range vr.Errors {
 			errorsMap[k] = v
 		}
 	}
 
-	// Fallback for general errors if no field-specific ones exist
 	if vr.Err != nil || len(errorsMap) == 0 {
 		errorsMap["code"] = string(ErrBadRequest)
 	}

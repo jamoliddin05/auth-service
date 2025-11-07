@@ -3,6 +3,7 @@ package repositories
 import (
 	"app/internal/domain"
 	"encoding/json"
+	"errors"
 	"gorm.io/gorm"
 )
 
@@ -42,9 +43,14 @@ func (r *EventRepositoryImpl) Save(eventType string, payload interface{}) error 
 
 func (r *EventRepositoryImpl) GetByID(id int64) (*domain.Event, error) {
 	var event domain.Event
-	if err := r.db.First(&event, "id = ?", id).Error; err != nil {
+	err := r.db.First(&event, "id = ?", id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
 		return nil, err
 	}
+
 	return &event, nil
 }
 
