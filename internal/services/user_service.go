@@ -2,7 +2,6 @@ package services
 
 import (
 	"app/internal/domain"
-	"app/internal/dto"
 	"app/internal/stores"
 	"app/internal/utils"
 	"github.com/google/uuid"
@@ -17,8 +16,14 @@ func NewUserService(hasher utils.PasswordHasher) *UserService {
 	return &UserService{hasher: hasher}
 }
 
-func (s *UserService) Register(store stores.UserTokenStore, req dto.RegisterRequest) (*domain.User, error) {
-	user, err := store.Users().GetByPhone(req.Phone)
+func (s *UserService) Register(
+	store stores.UserTokenOutboxStore,
+	name string,
+	surname string,
+	email string,
+	password string,
+) (*domain.User, error) {
+	user, err := store.Users().GetByEmail(email)
 	if err != nil {
 		return nil, err
 	}
@@ -27,10 +32,10 @@ func (s *UserService) Register(store stores.UserTokenStore, req dto.RegisterRequ
 	}
 
 	user = &domain.User{
-		Phone:    req.Phone,
-		Password: s.hasher.Hash(req.Password),
-		Name:     req.Name,
-		Surname:  req.Surname,
+		Email:    email,
+		Password: s.hasher.Hash(password),
+		Name:     name,
+		Surname:  surname,
 		Roles: []domain.UserRole{
 			{Role: domain.RoleCustomer},
 		},
@@ -40,15 +45,10 @@ func (s *UserService) Register(store stores.UserTokenStore, req dto.RegisterRequ
 		return nil, err
 	}
 
-	err = store.Outbox().Save("UserRegistered", user)
-	if err != nil {
-		return nil, err
-	}
-
 	return user, nil
 }
 
-func (s *UserService) PromoteToSeller(store stores.UserTokenStore, userId string) (*domain.User, error) {
+func (s *UserService) PromoteToSeller(store stores.UserTokenOutboxStore, userId string) (*domain.User, error) {
 	userUUID, err := uuid.Parse(userId)
 	if err != nil {
 		return nil, ErrInvalidCredentials
@@ -77,7 +77,7 @@ func (s *UserService) PromoteToSeller(store stores.UserTokenStore, userId string
 	return user, nil
 }
 
-func (s *UserService) GetByID(store stores.UserTokenStore, userId string) (*domain.User, error) {
+func (s *UserService) GetByID(store stores.UserTokenOutboxStore, userId string) (*domain.User, error) {
 	userUUID, err := uuid.Parse(userId)
 	if err != nil {
 		return nil, err
@@ -95,8 +95,8 @@ func (s *UserService) GetByID(store stores.UserTokenStore, userId string) (*doma
 	return user, nil
 }
 
-func (s *UserService) Authenticate(store stores.UserTokenStore, phone string, password string) (*domain.User, error) {
-	user, err := store.Users().GetByPhone(phone)
+func (s *UserService) Authenticate(store stores.UserTokenOutboxStore, email string, password string) (*domain.User, error) {
+	user, err := store.Users().GetByEmail(email)
 	if err != nil || user == nil {
 		return nil, ErrInvalidCredentials
 	}

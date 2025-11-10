@@ -10,12 +10,10 @@ import (
 	"fmt"
 )
 
-// JWKS represents a JSON Web Key Set
 type JWKS struct {
 	Keys []JWK `json:"keys"`
 }
 
-// JWK represents a single JSON Web Key
 type JWK struct {
 	Kty string `json:"kty"`
 	Use string `json:"use"`
@@ -25,7 +23,6 @@ type JWK struct {
 	E   string `json:"e"`
 }
 
-// LoadJWKSFromPEM converts your PEM public key string into a JWKS
 func LoadJWKSFromPEM(pemStr string, kid string) (string, error) {
 	block, _ := pem.Decode([]byte(pemStr))
 	if block == nil {

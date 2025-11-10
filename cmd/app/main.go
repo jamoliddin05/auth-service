@@ -11,12 +11,16 @@ func main() {
 	cfg := configs.LoadConfig()
 
 	dbWrapper := helpers.MustInitDB(cfg)
-	helpers.MustRegisterValidators()
 
-	authHandler := helpers.BuildAuthHandler(dbWrapper, cfg.JWTPrivateKey, cfg.JWTPublicKey)
+	userHandler := helpers.BuildUserHandler(dbWrapper)
+	jwksHandler := helpers.BuildJwksHandler(cfg.JWTPublicKey)
+	authHandler := helpers.BuildAuthHandler(dbWrapper, cfg.JWTPrivateKey)
 
 	r := gin.Default()
-	authHandler.BindRoutes(r)
+	auth := r.Group("/auth")
+	userHandler.BindRoutes(auth)
+	jwksHandler.BindRoutes(auth)
+	authHandler.BindRoutes(auth)
 
 	app := bootstrap.NewApp(r, ":8080")
 	app.RegisterCloser(dbWrapper)

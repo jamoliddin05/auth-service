@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"app/internal/middlewares"
+	"app/internal/stores"
+	"app/internal/uows"
 	"errors"
-	"github.com/go-playground/validator/v10"
 	"net/http"
-	"strings"
 
 	"app/internal/dto"
 	"app/internal/services"
@@ -13,182 +14,132 @@ import (
 )
 
 type AuthHandler struct {
-	authService *services.AuthService
-	jwksStr     string
+	uow              uows.UserTokeOutboxUnitOfWork
+	requestValidator *middlewares.RequestValidator
+	users            *services.UserService
+	tokens           *services.TokenService
+	outbox           *services.OutboxService
 }
 
-func NewAuthHandler(authService *services.AuthService, jwksStr string) *AuthHandler {
+func NewAuthHandler(
+	uow uows.UserTokeOutboxUnitOfWork,
+	requestValidator *middlewares.RequestValidator,
+	users *services.UserService,
+	tokens *services.TokenService,
+	outbox *services.OutboxService,
+) *AuthHandler {
 	return &AuthHandler{
-		authService: authService,
-		jwksStr:     jwksStr,
+		uow:              uow,
+		requestValidator: requestValidator,
+		users:            users,
+		tokens:           tokens,
+		outbox:           outbox,
 	}
 }
 
-func (h *AuthHandler) BindRoutes(r *gin.Engine) {
-	auth := r.Group("/auth")
-
-	auth.POST("/register", h.Register)
-	auth.POST("/login", h.Login)
-	auth.POST("/refresh", h.Refresh)
-	auth.POST("/promote-to-seller", h.PromoteToSeller)
-	auth.GET("/me", h.GetMe)
-	auth.GET("/.well-known/jwks.json", h.JWKS)
-
-}
-
-func (h *AuthHandler) Register(c *gin.Context) {
-	var req dto.RegisterRequest
-	vr := h.bindAndValidate(c, &req)
-	if !vr.Valid {
-		h.respondValidationError(c, vr)
-		return
-	}
-
-	resp, err := h.authService.Register(req)
-	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrUserAlreadyExists):
-			JSONError(c, http.StatusConflict, map[string]string{"code": string(ErrUserExists)})
-		default:
-			JSONError(c, http.StatusInternalServerError, map[string]string{"code": string(ErrInternal)})
-		}
-		return
-	}
-
-	JSONSuccess(c, resp, http.StatusCreated)
-
+func (h *AuthHandler) BindRoutes(r *gin.RouterGroup) {
+	r.POST("/login", h.Login)
+	r.POST("/refresh", h.Refresh)
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
-	vr := h.bindAndValidate(c, &req)
-	if !vr.Valid {
-		h.respondValidationError(c, vr)
+	if !h.requestValidator.ValidateRequest(c, &req) {
 		return
 	}
+	var accessToken string
+	var refreshToken string
+	err := h.uow.DoTransaction(func(store stores.UserTokenOutboxStore) error {
+		user, err := h.users.Authenticate(store, req.Email, req.Password)
+		if err != nil {
+			return err
+		}
 
-	resp, err := h.authService.Login(req)
+		accessToken, refreshToken, err = h.tokens.IssueTokenForUser(store, user)
+		if err != nil {
+			return err
+		}
+
+		return h.outbox.SaveUserLoggedInEvent(store, user)
+	})
+
+	resp := dto.APIResponse{
+		Errors: make(map[string]string),
+	}
+	status := http.StatusOK
+
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidCredentials):
-			JSONError(c, http.StatusUnauthorized, map[string]string{"code": string(ErrInvalidCredentials)})
+			resp.Errors["error"] = "ERR_INVALID_CREDENTIALS"
+			status = http.StatusConflict
 		default:
-			JSONError(c, http.StatusInternalServerError, map[string]string{"code": string(ErrInternal)})
+			resp.Errors["error"] = "ERR_INTERNAL"
+			status = http.StatusInternalServerError
 		}
+		c.JSON(status, resp)
 		return
 	}
 
-	JSONSuccess(c, resp, http.StatusOK)
+	resp.Success = true
+	resp.Data = dto.TokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
 
+	c.JSON(status, resp)
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req dto.RefreshRequest
-	vr := h.bindAndValidate(c, &req)
-	if !vr.Valid {
-		h.respondValidationError(c, vr)
+	if !h.requestValidator.ValidateRequest(c, &req) {
 		return
 	}
-
 	userID := c.GetHeader("X-User-Id")
-	resp, err := h.authService.Refresh(req, userID)
+	var accessToken string
+	var refreshToken string
+	err := h.uow.DoTransaction(func(store stores.UserTokenOutboxStore) error {
+		user, err := h.users.GetByID(store, userID)
+		if err != nil {
+			return err
+		}
+
+		ok, err := h.tokens.VerifyRefreshToken(store, user.ID, req.RefreshToken)
+		if err != nil || !ok {
+			return services.ErrInvalidCredentials
+		}
+
+		accessToken, refreshToken, err = h.tokens.IssueTokenForUser(store, user)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	resp := dto.APIResponse{
+		Errors: make(map[string]string),
+	}
+	status := http.StatusOK
+
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidCredentials):
-			JSONError(c, http.StatusUnauthorized, map[string]string{"code": string(ErrInvalidCredentials)})
+			resp.Errors["error"] = "ERR_INVALID_CREDENTIALS"
+			status = http.StatusConflict
 		default:
-			JSONError(c, http.StatusInternalServerError, map[string]string{"code": string(ErrInternal)})
+			resp.Errors["error"] = "ERR_INTERNAL"
+			status = http.StatusInternalServerError
 		}
+		c.JSON(status, resp)
 		return
 	}
 
-	JSONSuccess(c, resp, http.StatusOK)
-
-}
-
-func (h *AuthHandler) PromoteToSeller(c *gin.Context) {
-	userID := c.GetHeader("X-User-Id")
-	resp, err := h.authService.PromoteToSeller(userID)
-	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrInvalidCredentials):
-			JSONError(c, http.StatusUnauthorized, map[string]string{"code": string(ErrInvalidCredentials)})
-		default:
-			JSONError(c, http.StatusInternalServerError, map[string]string{"code": string(ErrInternal)})
-		}
-		return
+	resp.Success = true
+	resp.Data = dto.TokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 	}
 
-	JSONSuccess(c, resp, http.StatusOK)
-
-}
-
-func (h *AuthHandler) GetMe(c *gin.Context) {
-	userID := c.GetHeader("X-User-Id")
-
-	resp, err := h.authService.GetMe(userID)
-	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrInvalidCredentials):
-			JSONError(c, http.StatusUnauthorized, map[string]string{"code": string(ErrInvalidCredentials)})
-		default:
-			JSONError(c, http.StatusInternalServerError, map[string]string{"code": string(ErrInternal)})
-		}
-		return
-	}
-
-	JSONSuccess(c, resp, http.StatusOK)
-
-}
-
-func (h *AuthHandler) JWKS(c *gin.Context) {
-	c.Data(http.StatusOK, "application/json", []byte(h.jwksStr))
-}
-
-func (h *AuthHandler) bindAndValidate(c *gin.Context, req any) ValidationResult {
-	if err := c.ShouldBindJSON(req); err != nil {
-		var ve validator.ValidationErrors
-		if errors.As(err, &ve) {
-			errorsMap := make(map[string]string)
-			for _, fe := range ve {
-				field := strings.ToLower(fe.Field())
-				errorsMap[field] = codeForTag(fe)
-			}
-			return ValidationResult{Valid: false, Errors: errorsMap}
-		}
-		return ValidationResult{Valid: false, Err: err}
-	}
-	return ValidationResult{Valid: true}
-}
-
-func (h *AuthHandler) respondValidationError(c *gin.Context, vr ValidationResult) {
-	errorsMap := make(map[string]string)
-
-	if len(vr.Errors) > 0 {
-		for k, v := range vr.Errors {
-			errorsMap[k] = v
-		}
-	}
-
-	if vr.Err != nil || len(errorsMap) == 0 {
-		errorsMap["code"] = string(ErrBadRequest)
-	}
-
-	JSONError(c, http.StatusBadRequest, errorsMap)
-}
-
-// --- Error Code Mapper ---
-func codeForTag(fe validator.FieldError) string {
-	switch fe.Tag() {
-	case "required":
-		return string(ErrRequired)
-	case "min":
-		return string(ErrMinLength)
-	case "max":
-		return string(ErrMaxLength)
-	case "uzphone":
-		return string(ErrInvalidPhone)
-	default:
-		return string(ErrInvalidField)
-	}
+	c.JSON(status, resp)
 }

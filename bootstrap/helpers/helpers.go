@@ -3,18 +3,16 @@ package helpers
 import (
 	"app/bootstrap/configs"
 	"app/internal/handlers"
+	"app/internal/middlewares"
 	"app/internal/services"
 	"app/internal/uows"
 	"app/internal/utils"
 	"app/internal/validators"
+	"github.com/go-playground/validator/v10"
 	"log"
 	"time"
-
-	"github.com/gin-gonic/gin/binding"
-	"github.com/go-playground/validator/v10"
 )
 
-// MustInitDB инициализирует базу данных или падает
 func MustInitDB(cfg *configs.Config) *configs.Wrapper {
 	dbWrapper, err := configs.NewDBWrapper(cfg.DSN())
 	if err != nil {
@@ -23,36 +21,42 @@ func MustInitDB(cfg *configs.Config) *configs.Wrapper {
 	return dbWrapper
 }
 
-// MustRegisterValidators регистрирует кастомные валидаторы Gin
-func MustRegisterValidators() {
-	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		if err := v.RegisterValidation("uzphone", validators.UzPhoneValidator); err != nil {
-			log.Fatalf("could not register uzphone validator: %v", err)
-		}
-
-		if err := v.RegisterValidation("letters", validators.LettersValidator); err != nil {
-			log.Fatalf("could not register letters validator: %v", err)
-		}
-	}
-}
-
-// BuildAuthHandler строит слой AuthService + Gin handler
-func BuildAuthHandler(dbWrapper *configs.Wrapper, jwtPrivateKey string, jwtPublicKey string) *handlers.AuthHandler {
-	uow := uows.NewUnitOfWork(dbWrapper.DB())
-	hasher := utils.NewBcryptHasher()
+func BuildAuthHandler(dbWrapper *configs.Wrapper, jwtPrivateKey string) *handlers.AuthHandler {
 	jwtHelper, err := utils.NewJWTManager(jwtPrivateKey, 15*time.Minute, "my_key_id")
 	if err != nil {
 		log.Fatalf("could not initialize JWT manager: %v", err)
 	}
+
+	uow := uows.NewGormUserTokeOutboxUnitOfWork(dbWrapper.DB())
+	hasher := utils.NewBcryptHasher()
+	tokenGenerator := utils.NewTokenGenerator()
+	val := validators.NewValidator(validator.New())
+	middleware := middlewares.NewRequestValidator(val)
+
+	usersSvc := services.NewUserService(hasher)
+	tokensSvc := services.NewTokenService(hasher, tokenGenerator, jwtHelper)
+	outboxSvc := services.NewOutboxService()
+	authHandler := handlers.NewAuthHandler(uow, middleware, usersSvc, tokensSvc, outboxSvc)
+
+	return authHandler
+}
+
+func BuildUserHandler(dbWrapper *configs.Wrapper) *handlers.UserHandler {
+	uow := uows.NewGormUserTokeOutboxUnitOfWork(dbWrapper.DB())
+	hasher := utils.NewBcryptHasher()
+	val := validators.NewValidator(validator.New())
+	middleware := middlewares.NewRequestValidator(val)
+
+	usersSvc := services.NewUserService(hasher)
+	outboxSvc := services.NewOutboxService()
+	return handlers.NewUserHandler(uow, middleware, usersSvc, outboxSvc)
+}
+
+func BuildJwksHandler(jwtPublicKey string) *handlers.JwksHandler {
 	jwksStr, err := configs.LoadJWKSFromPEM(jwtPublicKey, "my_key_id")
 	if err != nil {
 		log.Fatalf("could not initialize JWT manager: %v", err)
 	}
 
-	usersSvc := services.NewUserService(hasher)
-	tokensSvc := services.NewTokenService(hasher, jwtHelper)
-	authSvc := services.NewAuthService(uow, usersSvc, tokensSvc)
-	authHandler := handlers.NewAuthHandler(authSvc, jwksStr)
-
-	return authHandler
+	return handlers.NewJwksHandler(jwksStr)
 }

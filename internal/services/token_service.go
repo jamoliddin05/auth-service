@@ -9,15 +9,20 @@ import (
 )
 
 type TokenService struct {
-	hasher utils.PasswordHasher
-	jwt    utils.JWTHelper
+	hasher         utils.PasswordHasher
+	tokenGenerator utils.TokenGenerator
+	jwt            utils.JWTHelper
 }
 
-func NewTokenService(hasher utils.PasswordHasher, jwt utils.JWTHelper) *TokenService {
-	return &TokenService{hasher: hasher, jwt: jwt}
+func NewTokenService(hasher utils.PasswordHasher, tokenGenerator utils.TokenGenerator, jwt utils.JWTHelper) *TokenService {
+	return &TokenService{
+		hasher:         hasher,
+		tokenGenerator: tokenGenerator,
+		jwt:            jwt,
+	}
 }
 
-func (s *TokenService) IssueTokenForUser(store stores.UserTokenStore, user *domain.User) (string, string, error) {
+func (s *TokenService) IssueTokenForUser(store stores.UserTokenOutboxStore, user *domain.User) (string, string, error) {
 	accessToken, refreshToken, err := s.generateTokens(user)
 	if err != nil {
 		return "", "", err
@@ -31,13 +36,13 @@ func (s *TokenService) IssueTokenForUser(store stores.UserTokenStore, user *doma
 	return accessToken, refreshToken, nil
 }
 
-func (s *TokenService) VerifyRefreshToken(store stores.UserTokenStore, userID uuid.UUID, refreshToken string) (bool, error) {
+func (s *TokenService) VerifyRefreshToken(store stores.UserTokenOutboxStore, userID uuid.UUID, refreshToken string) (bool, error) {
 	token, err := store.Tokens().GetByUserID(userID)
 	if err != nil {
 		return false, err
 	}
 
-	if token == nil || !s.hasher.Verify(refreshToken, token.TokenHash) {
+	if token == nil || !s.hasher.Verify(refreshToken, token.TokenHash) || token.ExpiresAt.Before(time.Now()) {
 		return false, ErrInvalidCredentials
 	}
 
@@ -55,7 +60,7 @@ func (s *TokenService) generateTokens(user *domain.User) (string, string, error)
 		return "", "", err
 	}
 
-	refreshToken, err := utils.GenerateSecureToken(32)
+	refreshToken, err := s.tokenGenerator.GenerateSecureToken(32)
 	if err != nil {
 		return "", "", err
 	}
@@ -63,7 +68,7 @@ func (s *TokenService) generateTokens(user *domain.User) (string, string, error)
 	return accessToken, refreshToken, nil
 }
 
-func (s *TokenService) saveRefreshToken(store stores.UserTokenStore, userID uuid.UUID, refreshToken string) error {
+func (s *TokenService) saveRefreshToken(store stores.UserTokenOutboxStore, userID uuid.UUID, refreshToken string) error {
 	token, err := store.Tokens().GetByUserID(userID)
 	if err != nil {
 		return err

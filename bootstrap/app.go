@@ -33,14 +33,13 @@ func (a *App) RegisterCloser(c closers.Closer) {
 	a.closers = append(a.closers, c)
 }
 
-func (a *App) Run() error {
+func (a *App) run() error {
 	return a.srv.ListenAndServe()
 }
 
-// RunWithGracefulShutdown runs server and gracefully shuts down on SIGINT/SIGTERM
 func (a *App) RunWithGracefulShutdown() {
 	go func() {
-		if err := a.Run(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := a.run(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("server error: %v", err)
 		}
 	}()

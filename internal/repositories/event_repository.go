@@ -7,8 +7,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// EventRepository interface
-//
 //go:generate mockery --name=EventRepository --output=../mocks --structname=EventRepositoryMock
 type EventRepository interface {
 	Save(eventType string, payload interface{}) error

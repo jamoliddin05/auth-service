@@ -19,7 +19,6 @@ type JWTManager struct {
 	kid           string
 }
 
-// NewJWTManager parses an RSA private key from a PEM string
 func NewJWTManager(pemKey string, duration time.Duration, kid string) (*JWTManager, error) {
 	if pemKey == "" {
 		return nil, fmt.Errorf("private key PEM string is empty")
@@ -39,14 +38,12 @@ func NewJWTManager(pemKey string, duration time.Duration, kid string) (*JWTManag
 	}, nil
 }
 
-// Claims structure
 type Claims struct {
 	UserID string   `json:"user_id"`
 	Roles  []string `json:"roles"`
 	jwt.RegisteredClaims
 }
 
-// GenerateAccessToken signs a JWT with RS256
 func (j *JWTManager) GenerateAccessToken(userID string, roles []string) (string, error) {
 	claims := &Claims{
 		UserID: userID,

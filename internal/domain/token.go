@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// Token represents a refresh token
 type Token struct {
 	ID        uint      `json:"id" gorm:"primaryKey;autoIncrement"`
 	UserID    uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index"`

@@ -11,7 +11,7 @@ import (
 type UserRepository interface {
 	Save(u *domain.User) error
 	GetByID(id uuid.UUID) (*domain.User, error)
-	GetByPhone(phone string) (*domain.User, error)
+	GetByEmail(email string) (*domain.User, error)
 }
 
 type UserRepositoryImpl struct {
@@ -39,9 +39,9 @@ func (r *UserRepositoryImpl) GetByID(id uuid.UUID) (*domain.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepositoryImpl) GetByPhone(phone string) (*domain.User, error) {
+func (r *UserRepositoryImpl) GetByEmail(email string) (*domain.User, error) {
 	var user domain.User
-	err := r.db.Preload("Roles").First(&user, "phone = ?", phone).Error
+	err := r.db.Preload("Roles").First(&user, "email = ?", email).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
