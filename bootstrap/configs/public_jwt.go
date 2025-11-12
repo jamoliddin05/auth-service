@@ -39,10 +39,8 @@ func LoadJWKSFromPEM(pemStr string, kid string) (string, error) {
 		return "", errors.New("not an RSA public key")
 	}
 
-	// Convert modulus and exponent to base64 URL encoding
 	n := base64.RawURLEncoding.EncodeToString(rsaPub.N.Bytes())
 
-	// Convert exponent (int) to bytes
 	eBytes := make([]byte, 4)
 	eLen := 0
 	for exp := rsaPub.E; exp > 0; exp >>= 8 {

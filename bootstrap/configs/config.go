@@ -29,7 +29,6 @@ func LoadConfig() *Config {
 	}
 }
 
-// DSN returns a PostgreSQL connection string.
 func (c *Config) DSN() string {
 	return fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
