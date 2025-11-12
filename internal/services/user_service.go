@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+var (
+	UserRegistered = "UserRegistered"
+)
+
 type UserService struct {
 	hasher utils.PasswordHasher
 }
@@ -17,7 +21,7 @@ func NewUserService(hasher utils.PasswordHasher) *UserService {
 }
 
 func (s *UserService) Register(
-	store stores.UserTokenOutboxStore,
+	store *stores.GormUserTokenOutboxStore,
 	name string,
 	surname string,
 	email string,
@@ -48,7 +52,10 @@ func (s *UserService) Register(
 	return user, nil
 }
 
-func (s *UserService) PromoteToSeller(store stores.UserTokenOutboxStore, userId string) (*domain.User, error) {
+func (s *UserService) PromoteToSeller(
+	store *stores.GormUserTokenOutboxStore,
+	userId string,
+) (*domain.User, error) {
 	userUUID, err := uuid.Parse(userId)
 	if err != nil {
 		return nil, ErrInvalidCredentials
@@ -77,7 +84,10 @@ func (s *UserService) PromoteToSeller(store stores.UserTokenOutboxStore, userId 
 	return user, nil
 }
 
-func (s *UserService) GetByID(store stores.UserTokenOutboxStore, userId string) (*domain.User, error) {
+func (s *UserService) GetByID(
+	store *stores.GormUserTokenOutboxStore,
+	userId string,
+) (*domain.User, error) {
 	userUUID, err := uuid.Parse(userId)
 	if err != nil {
 		return nil, err
@@ -95,7 +105,11 @@ func (s *UserService) GetByID(store stores.UserTokenOutboxStore, userId string) 
 	return user, nil
 }
 
-func (s *UserService) Authenticate(store stores.UserTokenOutboxStore, email string, password string) (*domain.User, error) {
+func (s *UserService) Authenticate(
+	store *stores.GormUserTokenOutboxStore,
+	email string,
+	password string,
+) (*domain.User, error) {
 	user, err := store.Users().GetByEmail(email)
 	if err != nil || user == nil {
 		return nil, ErrInvalidCredentials

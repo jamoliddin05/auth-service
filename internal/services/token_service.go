@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+var (
+	UserLoggedIn = "UserLoggedIn"
+)
+
 type TokenService struct {
 	hasher         utils.PasswordHasher
 	tokenGenerator utils.TokenGenerator
@@ -22,7 +26,10 @@ func NewTokenService(hasher utils.PasswordHasher, tokenGenerator utils.TokenGene
 	}
 }
 
-func (s *TokenService) IssueTokenForUser(store stores.UserTokenOutboxStore, user *domain.User) (string, string, error) {
+func (s *TokenService) IssueTokenForUser(
+	store *stores.GormUserTokenOutboxStore,
+	user *domain.User,
+) (string, string, error) {
 	accessToken, refreshToken, err := s.generateTokens(user)
 	if err != nil {
 		return "", "", err
@@ -36,7 +43,11 @@ func (s *TokenService) IssueTokenForUser(store stores.UserTokenOutboxStore, user
 	return accessToken, refreshToken, nil
 }
 
-func (s *TokenService) VerifyRefreshToken(store stores.UserTokenOutboxStore, userID uuid.UUID, refreshToken string) (bool, error) {
+func (s *TokenService) VerifyRefreshToken(
+	store *stores.GormUserTokenOutboxStore,
+	userID uuid.UUID,
+	refreshToken string,
+) (bool, error) {
 	token, err := store.Tokens().GetByUserID(userID)
 	if err != nil {
 		return false, err
@@ -68,7 +79,11 @@ func (s *TokenService) generateTokens(user *domain.User) (string, string, error)
 	return accessToken, refreshToken, nil
 }
 
-func (s *TokenService) saveRefreshToken(store stores.UserTokenOutboxStore, userID uuid.UUID, refreshToken string) error {
+func (s *TokenService) saveRefreshToken(
+	store *stores.GormUserTokenOutboxStore,
+	userID uuid.UUID,
+	refreshToken string,
+) error {
 	token, err := store.Tokens().GetByUserID(userID)
 	if err != nil {
 		return err

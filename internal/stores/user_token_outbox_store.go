@@ -5,18 +5,11 @@ import (
 	"gorm.io/gorm"
 )
 
-//go:generate mockery --name=Store --output=../mocks --structname=StoreMock
-type UserTokenOutboxStore interface {
-	Users() repositories.UserRepository
-	Tokens() repositories.TokenRepository
-	Outbox() repositories.EventRepository
-}
-
 type GormUserTokenOutboxStore struct {
 	db *gorm.DB
 }
 
-func NewUserTokenOutboxStore(db *gorm.DB) UserTokenOutboxStore {
+func NewUserTokenOutboxStore(db *gorm.DB) *GormUserTokenOutboxStore {
 	return &GormUserTokenOutboxStore{db: db}
 }
 

@@ -14,17 +14,17 @@ import (
 )
 
 type UserHandler struct {
-	uow              uows.UserTokeOutboxUnitOfWork
+	uow              uows.UnitOfWork[*stores.GormUserTokenOutboxStore]
 	requestValidator *middlewares.RequestValidator
 	userService      *services.UserService
-	outboxService    *services.OutboxService
+	outboxService    *services.UserTokenOutboxService
 }
 
 func NewUserHandler(
-	uow uows.UserTokeOutboxUnitOfWork,
+	uow uows.UnitOfWork[*stores.GormUserTokenOutboxStore],
 	requestValidator *middlewares.RequestValidator,
 	userService *services.UserService,
-	outboxService *services.OutboxService,
+	outboxService *services.UserTokenOutboxService,
 ) *UserHandler {
 	return &UserHandler{
 		requestValidator: requestValidator,
@@ -47,7 +47,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	}
 	var user *domain.User
 	var err error
-	err = h.uow.DoTransaction(func(txStore stores.UserTokenOutboxStore) error {
+	err = h.uow.DoTransaction(func(txStore *stores.GormUserTokenOutboxStore) error {
 		user, err = h.userService.Register(
 			txStore,
 			req.Name,
@@ -92,7 +92,7 @@ func (h *UserHandler) PromoteToSeller(c *gin.Context) {
 	userID := c.GetHeader("X-User-Id")
 	var user *domain.User
 	var err error
-	err = h.uow.DoTransaction(func(txStore stores.UserTokenOutboxStore) error {
+	err = h.uow.DoTransaction(func(txStore *stores.GormUserTokenOutboxStore) error {
 		user, err = h.userService.PromoteToSeller(
 			txStore,
 			userID,
@@ -135,7 +135,7 @@ func (h *UserHandler) GetMe(c *gin.Context) {
 
 	var user *domain.User
 	var err error
-	err = h.uow.DoTransaction(func(txStore stores.UserTokenOutboxStore) error {
+	err = h.uow.DoTransaction(func(txStore *stores.GormUserTokenOutboxStore) error {
 		user, err = h.userService.GetByID(
 			txStore,
 			userID,
