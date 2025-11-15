@@ -21,7 +21,7 @@ func NewUserService(hasher utils.PasswordHasher) *UserService {
 }
 
 func (s *UserService) Register(
-	store *stores.GormUserTokenOutboxStore,
+	store *stores.UserTokenOutboxStore,
 	name string,
 	surname string,
 	email string,
@@ -53,7 +53,7 @@ func (s *UserService) Register(
 }
 
 func (s *UserService) PromoteToSeller(
-	store *stores.GormUserTokenOutboxStore,
+	store *stores.UserTokenOutboxStore,
 	userId string,
 ) (*domain.User, error) {
 	userUUID, err := uuid.Parse(userId)
@@ -85,7 +85,7 @@ func (s *UserService) PromoteToSeller(
 }
 
 func (s *UserService) GetByID(
-	store *stores.GormUserTokenOutboxStore,
+	store *stores.UserTokenOutboxStore,
 	userId string,
 ) (*domain.User, error) {
 	userUUID, err := uuid.Parse(userId)
@@ -106,7 +106,7 @@ func (s *UserService) GetByID(
 }
 
 func (s *UserService) Authenticate(
-	store *stores.GormUserTokenOutboxStore,
+	store *stores.UserTokenOutboxStore,
 	email string,
 	password string,
 ) (*domain.User, error) {

@@ -28,7 +28,7 @@ func BuildAuthHandler(dbWrapper *configs.Wrapper, jwtPrivateKey string) *handler
 		log.Fatalf("could not initialize JWT manager: %v", err)
 	}
 
-	uow := uows.NewGormUnitOfWork[*stores.GormUserTokenOutboxStore](dbWrapper.DB(), stores.NewUserTokenOutboxStore)
+	uow := uows.NewGormUnitOfWork[*stores.UserTokenOutboxStore](dbWrapper.DB(), stores.NewUserTokenOutboxStore)
 	hasher := utils.NewBcryptHasher()
 	tokenGenerator := utils.NewTokenGenerator()
 	val := validators.NewValidator(validator.New())
@@ -43,7 +43,7 @@ func BuildAuthHandler(dbWrapper *configs.Wrapper, jwtPrivateKey string) *handler
 }
 
 func BuildUserHandler(dbWrapper *configs.Wrapper) *handlers.UserHandler {
-	uow := uows.NewGormUnitOfWork[*stores.GormUserTokenOutboxStore](dbWrapper.DB(), stores.NewUserTokenOutboxStore)
+	uow := uows.NewGormUnitOfWork[*stores.UserTokenOutboxStore](dbWrapper.DB(), stores.NewUserTokenOutboxStore)
 	hasher := utils.NewBcryptHasher()
 	val := validators.NewValidator(validator.New())
 	middleware := middlewares.NewRequestValidator(val)

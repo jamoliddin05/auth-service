@@ -27,7 +27,7 @@ func NewTokenService(hasher utils.PasswordHasher, tokenGenerator utils.TokenGene
 }
 
 func (s *TokenService) IssueTokenForUser(
-	store *stores.GormUserTokenOutboxStore,
+	store *stores.UserTokenOutboxStore,
 	user *domain.User,
 ) (string, string, error) {
 	accessToken, refreshToken, err := s.generateTokens(user)
@@ -44,7 +44,7 @@ func (s *TokenService) IssueTokenForUser(
 }
 
 func (s *TokenService) VerifyRefreshToken(
-	store *stores.GormUserTokenOutboxStore,
+	store *stores.UserTokenOutboxStore,
 	userID uuid.UUID,
 	refreshToken string,
 ) (bool, error) {
@@ -80,7 +80,7 @@ func (s *TokenService) generateTokens(user *domain.User) (string, string, error)
 }
 
 func (s *TokenService) saveRefreshToken(
-	store *stores.GormUserTokenOutboxStore,
+	store *stores.UserTokenOutboxStore,
 	userID uuid.UUID,
 	refreshToken string,
 ) error {

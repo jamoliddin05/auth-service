@@ -14,7 +14,7 @@ import (
 )
 
 type AuthHandler struct {
-	uow              uows.UnitOfWork[*stores.GormUserTokenOutboxStore]
+	uow              uows.UnitOfWork[*stores.UserTokenOutboxStore]
 	requestValidator *middlewares.RequestValidator
 	users            *services.UserService
 	tokens           *services.TokenService
@@ -22,7 +22,7 @@ type AuthHandler struct {
 }
 
 func NewAuthHandler(
-	uow uows.UnitOfWork[*stores.GormUserTokenOutboxStore],
+	uow uows.UnitOfWork[*stores.UserTokenOutboxStore],
 	requestValidator *middlewares.RequestValidator,
 	users *services.UserService,
 	tokens *services.TokenService,
@@ -49,7 +49,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 	var accessToken string
 	var refreshToken string
-	err := h.uow.DoTransaction(func(store *stores.GormUserTokenOutboxStore) error {
+	err := h.uow.DoTransaction(func(store *stores.UserTokenOutboxStore) error {
 		user, err := h.users.Authenticate(store, req.Email, req.Password)
 		if err != nil {
 			return err
@@ -98,7 +98,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	userID := c.GetHeader("X-User-Id")
 	var accessToken string
 	var refreshToken string
-	err := h.uow.DoTransaction(func(store *stores.GormUserTokenOutboxStore) error {
+	err := h.uow.DoTransaction(func(store *stores.UserTokenOutboxStore) error {
 		user, err := h.users.GetByID(store, userID)
 		if err != nil {
 			return err
